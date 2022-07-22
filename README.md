@@ -1,6 +1,6 @@
 # Build a sqlite clone
 - [x] Part 1 - Introduction and Setting up the REPL
-- [ ] Part 2 - World’s Simplest SQL Compiler and Virtual Machine
+- [x] Part 2 - World’s Simplest SQL Compiler and Virtual Machine
 - [ ] Part 3 - An In-Memory, Append-Only, Single-Table Database
 - [ ] Part 4 - Our First Tests (and Bugs)
 - [ ] Part 5 - Persistence to Disk
