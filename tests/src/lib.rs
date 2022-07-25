@@ -2,33 +2,61 @@
 mod tests {
     use std::env;
     use std::io::{Read, Write};
+    use std::path::PathBuf;
     use std::process::{Command, Stdio};
 
-    fn run_script<T: AsRef<str>>(commands: Vec<T>) -> Vec<String> {
-        let cstack_path =
-            env::var("CSTACK_PATH").expect("missing CSTACK_PATH environment variable");
-        let process = Command::new(cstack_path)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .spawn()
-            .unwrap();
+    struct Database {
+        filename: PathBuf,
+        cstack_path: String,
+    }
 
-        let mut input = String::new();
-        for command in commands {
-            input.push_str(command.as_ref());
-            input.push('\n');
+    impl Database {
+        fn new() -> Database {
+            let cstack_path =
+                env::var("CSTACK_PATH").expect("missing CSTACK_PATH environment variable");
+
+            let filename = uuid::Uuid::new_v4().to_string();
+            let mut path = std::path::PathBuf::from(&filename);
+            path.set_extension("db");
+
+            Database {
+                filename: path,
+                cstack_path,
+            }
         }
 
-        process.stdin.unwrap().write_all(input.as_bytes()).unwrap();
+        fn run_script<T: AsRef<str>>(&self, commands: Vec<T>) -> Vec<String> {
+            let process = Command::new(&self.cstack_path)
+                .arg(&self.filename)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .spawn()
+                .unwrap();
 
-        let mut string = String::new();
-        process.stdout.unwrap().read_to_string(&mut string).unwrap();
-        string.lines().map(|l| l.to_string()).collect()
+            let mut input = String::new();
+            for command in commands {
+                input.push_str(command.as_ref());
+                input.push('\n');
+            }
+
+            process.stdin.unwrap().write_all(input.as_bytes()).unwrap();
+
+            let mut string = String::new();
+            process.stdout.unwrap().read_to_string(&mut string).unwrap();
+            string.lines().map(|l| l.to_string()).collect()
+        }
+    }
+
+    impl Drop for Database {
+        fn drop(&mut self) {
+            std::fs::remove_file(&self.filename).unwrap();
+        }
     }
 
     #[test]
     fn insert_retrieve_row() {
-        let lines = run_script(vec![
+        let db = Database::new();
+        let lines = db.run_script(vec![
             "insert 1 user1 person1@example.com",
             "select",
             ".exit",
@@ -48,7 +76,8 @@ mod tests {
             .map(|i| format!("insert {i} user{i} person{i}@email.com"))
             .collect();
         input.push(String::from(".exit"));
-        let output = run_script(input);
+        let db = Database::new();
+        let output = db.run_script(input);
         assert_eq!(&output[output.len() - 2], "db > Error: Table full.");
     }
 
@@ -61,7 +90,8 @@ mod tests {
             String::from("select"),
             String::from(".exit"),
         ];
-        let output = run_script(input);
+        let db = Database::new();
+        let output = db.run_script(input);
         let expected = vec![
             String::from("db > Executed."),
             format!("db > (1, {username}, {email})"),
@@ -80,7 +110,8 @@ mod tests {
             String::from("select"),
             String::from(".exit"),
         ];
-        let output = run_script(input);
+        let db = Database::new();
+        let output = db.run_script(input);
         let expected = vec!["db > String is too long.", "db > Executed.", "db > "];
         assert_eq!(output, expected);
     }
@@ -88,8 +119,21 @@ mod tests {
     #[test]
     fn id_negative_error() {
         let input = vec!["insert -1 cstack foo@bar.com", "select", ".exit"];
-        let output = run_script(input);
+        let db = Database::new();
+        let output = db.run_script(input);
         let expected = vec!["db > ID must be positive.", "db > Executed.", "db > "];
+        assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn close_connection_keep_data() {
+        let db = Database::new();
+        let output = db.run_script(vec!["insert 1 user1 person1@example.com", ".exit"]);
+        let expected = vec!["db > Executed.", "db > "];
+        assert_eq!(output, expected);
+
+        let output = db.run_script(vec!["select", ".exit"]);
+        let expected = vec!["db > (1, user1, person1@example.com)", "Executed.", "db > "];
         assert_eq!(output, expected);
     }
 }
