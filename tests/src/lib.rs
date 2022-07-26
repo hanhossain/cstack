@@ -78,7 +78,13 @@ mod tests {
         input.push(String::from(".exit"));
         let db = Database::new();
         let output = db.run_script(input);
-        assert_eq!(&output[output.len() - 2], "db > Error: Table full.");
+        assert_eq!(
+            &output[output.len() - 2..],
+            &vec![
+                "db > Executed.",
+                "db > Need to implement updating parent after split",
+            ]
+        );
     }
 
     #[test]
@@ -215,7 +221,8 @@ mod tests {
                 "    - 12",
                 "    - 13",
                 "    - 14",
-                "db > Need to implement searching an internal node",
+                "db > Executed.",
+                "db > ",
             ]
         )
     }
