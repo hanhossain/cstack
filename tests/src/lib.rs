@@ -174,13 +174,50 @@ mod tests {
                 "db > Executed.",
                 "db > Executed.",
                 "db > Tree:",
-                "leaf (size 3)",
-                "  - 0 : 1",
-                "  - 1 : 2",
-                "  - 2 : 3",
+                "- leaf (size 3)",
+                "  - 1",
+                "  - 2",
+                "  - 3",
                 "db > ",
             ]
         );
+    }
+
+    #[test]
+    fn prints_structure_of_three_node_btree() {
+        let db = Database::new();
+        let mut input: Vec<_> = (1..=14)
+            .map(|i| format!("insert {i} user{i} person{i}@example.com"))
+            .collect();
+        input.push(String::from(".btree"));
+        input.push(String::from("insert 15 user15 person15@example.com"));
+        input.push(String::from(".exit"));
+        let output = db.run_script(input);
+        assert_eq!(
+            &output[14..],
+            &vec![
+                "db > Tree:",
+                "- internal (size 1)",
+                "  - leaf (size 7)",
+                "    - 1",
+                "    - 2",
+                "    - 3",
+                "    - 4",
+                "    - 5",
+                "    - 6",
+                "    - 7",
+                "  - key 7",
+                "  - leaf (size 7)",
+                "    - 8",
+                "    - 9",
+                "    - 10",
+                "    - 11",
+                "    - 12",
+                "    - 13",
+                "    - 14",
+                "db > Need to implement searching an internal node",
+            ]
+        )
     }
 
     #[test]
