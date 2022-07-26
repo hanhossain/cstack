@@ -153,9 +153,9 @@ mod tests {
                 "db > Constants:",
                 "ROW_SIZE: 293",
                 "COMMON_NODE_HEADER_SIZE: 6",
-                "LEAF_NODE_HEADER_SIZE: 10",
+                "LEAF_NODE_HEADER_SIZE: 14",
                 "LEAF_NODE_CELL_SIZE: 297",
-                "LEAF_NODE_SPACE_FOR_CELLS: 4086",
+                "LEAF_NODE_SPACE_FOR_CELLS: 4082",
                 "LEAF_NODE_MAX_CELLS: 13",
                 "db > ",
             ]
@@ -245,5 +245,23 @@ mod tests {
             "db > ",
         ];
         assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn print_all_rows_in_a_multi_level_tree() {
+        let mut input: Vec<_> = (1..=15)
+            .map(|i| format!("insert {i} user{i} person{i}@example.com"))
+            .collect();
+        input.push(String::from("select"));
+        input.push(String::from(".exit"));
+        let db = Database::new();
+        let output = db.run_script(input);
+        let mut expected = vec![String::from("db > (1, user1, person1@example.com)")];
+        for i in 2..=15 {
+            expected.push(format!("({i}, user{i}, person{i}@example.com)"));
+        }
+        expected.push(String::from("Executed."));
+        expected.push(String::from("db > "));
+        assert_eq!(&output[15..], &expected);
     }
 }
