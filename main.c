@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/fcntl.h>
 #include <unistd.h>
+#include "cstacksys/cstacksys.h"
 
 typedef struct {
     char *buffer;
@@ -823,6 +824,9 @@ MetaCommandResult do_meta_command(InputBuffer *input_buffer, Table *table) {
     } else if (strcmp(input_buffer->buffer, ".constants") == 0) {
         printf("Constants:\n");
         print_constants();
+        return META_COMMAND_SUCCESS;
+    } else if (strcmp(input_buffer->buffer, ".hello") == 0) {
+        hello_world();
         return META_COMMAND_SUCCESS;
     } else {
         return META_COMMAND_UNRECOGNIZED_COMMAND;
