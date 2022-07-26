@@ -82,7 +82,7 @@ mod tests {
             &output[output.len() - 2..],
             &vec![
                 "db > Executed.",
-                "db > Need to implement updating parent after split",
+                "db > Need to implement splitting internal node",
             ]
         );
     }
