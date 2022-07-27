@@ -8,6 +8,7 @@ const NODE_TYPE_SIZE: usize = size_of::<u8>();
 const IS_ROOT_SIZE: usize = size_of::<u8>();
 const IS_ROOT_OFFSET: usize = NODE_TYPE_SIZE;
 const PARENT_POINTER_SIZE: usize = size_of::<u32>();
+const PARENT_POINTER_OFFSET: usize = IS_ROOT_OFFSET + IS_ROOT_SIZE;
 const COMMON_NODE_HEADER_SIZE: usize = NODE_TYPE_SIZE + IS_ROOT_SIZE + PARENT_POINTER_SIZE;
 
 // Internal Node Header Layout
@@ -71,6 +72,11 @@ pub extern "C" fn is_node_root(node: *const c_void) -> bool {
 pub unsafe extern "C" fn set_node_root(node: *mut c_void, is_root: bool) {
     let value = if is_root { 1 } else { 0 };
     *(node.add(IS_ROOT_OFFSET) as *mut u8) = value;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn node_parent(node: *mut c_void) -> *mut u32 {
+    node.add(PARENT_POINTER_OFFSET) as *mut u32
 }
 
 #[no_mangle]

@@ -106,9 +106,7 @@ const uint32_t PAGE_SIZE = 4096;
  */
 const uint32_t NODE_TYPE_SIZE = sizeof(uint8_t);
 const uint32_t IS_ROOT_SIZE = sizeof(uint8_t);
-const uint32_t IS_ROOT_OFFSET = NODE_TYPE_SIZE;
 const uint32_t PARENT_POINTER_SIZE = sizeof(uint32_t);
-const uint32_t PARENT_POINTER_OFFSET = IS_ROOT_OFFSET + IS_ROOT_SIZE;
 const uint8_t COMMON_NODE_HEADER_SIZE = NODE_TYPE_SIZE + IS_ROOT_SIZE + PARENT_POINTER_SIZE;
 
 /*
@@ -253,10 +251,6 @@ typedef struct {
  */
 uint32_t get_unused_page_num(Pager *pager) {
     return pager->num_pages;
-}
-
-uint32_t *node_parent(void *node) {
-    return node + PARENT_POINTER_OFFSET;
 }
 
 void create_new_root(Table *table, uint32_t right_child_page_num) {
