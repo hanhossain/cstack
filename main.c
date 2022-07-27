@@ -7,6 +7,10 @@
 #include <unistd.h>
 #include "cstacksys/cstacksys.h"
 
+void callback_printf(const char *string) {
+    printf("%s", string);
+}
+
 typedef struct {
     char *buffer;
     size_t buffer_length;
@@ -26,10 +30,6 @@ InputBuffer* new_input_buffer() {
     input_buffer->input_length = 0;
 
     return input_buffer;
-}
-
-void print_prompt() {
-    printf("db > ");
 }
 
 void read_input(InputBuffer *input_buffer) {

@@ -79,6 +79,7 @@ name = "cstacksys"
 version = "0.1.0"
 dependencies = [
  "cbindgen",
+ "libc",
 ]
 
 [[package]]
