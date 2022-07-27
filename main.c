@@ -101,16 +101,10 @@ void deserialize_row(void *source, Row *destination) {
 const uint32_t PAGE_SIZE = 4096;
 #define TABLE_MAX_PAGES 100
 
-typedef enum {
-    NODE_INTERNAL,
-    NODE_LEAF
-} NodeType;
-
 /*
  * Common Node Header Layout
  */
 const uint32_t NODE_TYPE_SIZE = sizeof(uint8_t);
-const uint32_t NODE_TYPE_OFFSET = 0;
 const uint32_t IS_ROOT_SIZE = sizeof(uint8_t);
 const uint32_t IS_ROOT_OFFSET = NODE_TYPE_SIZE;
 const uint32_t PARENT_POINTER_SIZE = sizeof(uint32_t);
@@ -204,16 +198,6 @@ void *leaf_node_value(void *node, uint32_t cell_num) {
 
 uint32_t *leaf_node_next_leaf(void *node) {
     return node + LEAF_NODE_NEXT_LEAF_OFFSET;
-}
-
-NodeType get_node_type(void *node) {
-    uint8_t value = *((uint8_t *)(node + NODE_TYPE_OFFSET));
-    return (NodeType)value;
-}
-
-void set_node_type(void *node, NodeType type) {
-    uint8_t value = type;
-    *((uint8_t *)(node + NODE_TYPE_OFFSET)) = value;
 }
 
 uint32_t get_node_max_key(void *node) {

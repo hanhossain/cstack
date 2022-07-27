@@ -1,3 +1,4 @@
+mod node;
 mod repl;
 
 #[no_mangle]
