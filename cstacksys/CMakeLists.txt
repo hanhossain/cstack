@@ -14,7 +14,3 @@ add_custom_target(cstacksys ALL
     COMMAND cp ${CSTACKSYS_A} ${CMAKE_CURRENT_BINARY_DIR}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 set_target_properties(cstacksys PROPERTIES LOCATION ${CMAKE_CURRENT_BINARY_DIR})
-
-add_test(NAME cstacksys_test
-    COMMAND cargo test
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
