@@ -1,7 +1,11 @@
 #![allow(non_camel_case_types)]
 use std::ffi::c_void;
+use std::mem::size_of;
 
-pub const NODE_TYPE_OFFSET: usize = 0;
+// Common Node Header Layout
+const NODE_TYPE_OFFSET: usize = 0;
+const NODE_TYPE_SIZE: usize = size_of::<u8>();
+const IS_ROOT_OFFSET: usize = NODE_TYPE_SIZE;
 
 #[repr(C)]
 pub enum NodeType {
@@ -39,5 +43,19 @@ pub extern "C" fn set_node_type(node: *mut c_void, node_type: NodeType) {
     let value = u8::from(node_type);
     unsafe {
         *(node.add(NODE_TYPE_OFFSET) as *mut u8) = value;
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn is_node_root(node: *const c_void) -> bool {
+    let value = unsafe { *(node.add(IS_ROOT_OFFSET) as *const u8) };
+    value != 0
+}
+
+#[no_mangle]
+pub extern "C" fn set_node_root(node: *mut c_void, is_root: bool) {
+    let value = if is_root { 1 } else { 0 };
+    unsafe {
+        *(node.add(IS_ROOT_OFFSET) as *mut u8) = value;
     }
 }
