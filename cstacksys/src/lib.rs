@@ -1,5 +1,3 @@
-use std::ffi::CString;
-
 mod repl;
 
 #[no_mangle]

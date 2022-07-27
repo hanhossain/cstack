@@ -1,6 +1,5 @@
 use crate::callback_printf;
-use std::ffi::{CStr, CString};
-use std::io::{Stdout, Write};
+use std::ffi::CString;
 
 #[no_mangle]
 pub extern "C" fn print_prompt() {
