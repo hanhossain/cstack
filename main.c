@@ -84,22 +84,6 @@ const uint32_t INTERNAL_NODE_CELL_SIZE = INTERNAL_NODE_CHILD_SIZE + INTERNAL_NOD
 // Keep this small for testing
 const uint32_t INTERNAL_NODE_MAX_CELLS = 3;
 
-uint32_t *internal_node_child(void *node, uint32_t child_num) {
-    uint32_t num_keys = *internal_node_num_keys(node);
-    if (child_num > num_keys) {
-        printf("Tried to access child_num %d > num_keys %d\n", child_num, num_keys);
-        exit(EXIT_FAILURE);
-    } else if (child_num == num_keys) {
-        return internal_node_right_child(node);
-    } else {
-        return internal_node_cell(node, child_num);
-    }
-}
-
-uint32_t *internal_node_key(void *node, uint32_t key_num) {
-    return (void *)internal_node_cell(node, key_num) + INTERNAL_NODE_CHILD_SIZE;
-}
-
 uint32_t *leaf_node_num_cells(void *node) {
     return node + LEAF_NODE_NUM_CELLS_OFFSET;
 }

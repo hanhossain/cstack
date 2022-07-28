@@ -1,4 +1,5 @@
 #![allow(non_camel_case_types)]
+use libc::{exit, EXIT_FAILURE};
 use std::ffi::c_void;
 use std::mem::size_of;
 
@@ -99,4 +100,24 @@ pub unsafe extern "C" fn initialize_internal_node(node: *mut c_void) {
     set_node_type(node, NodeType::NODE_INTERNAL);
     set_node_root(node, false);
     *internal_node_num_keys(node) = 0;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn internal_node_child(node: *mut c_void, child_num: u32) -> *mut u32 {
+    let num_keys = *internal_node_num_keys(node);
+    if child_num > num_keys {
+        println!("Tried to access child_num {child_num} > num_keys {num_keys}");
+        exit(EXIT_FAILURE);
+    }
+
+    if child_num == num_keys {
+        internal_node_right_child(node)
+    } else {
+        internal_node_cell(node, child_num)
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn internal_node_key(node: *mut c_void, key_num: u32) -> *mut u32 {
+    internal_node_cell(node, key_num).add(INTERNAL_NODE_CHILD_SIZE)
 }
