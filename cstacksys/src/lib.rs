@@ -1,5 +1,6 @@
 mod node;
 mod repl;
+mod serialization;
 
 #[no_mangle]
 pub extern "C" fn hello_world() {
