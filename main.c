@@ -516,10 +516,6 @@ ExecuteResult execute_insert(const Statement *statement, Table *table) {
     return EXECUTE_SUCCESS;
 }
 
-void print_row(Row *row) {
-    printf("(%d, %s, %s)\n", row->id, row->username, row->email);
-}
-
 Cursor *table_start(Table *table) {
     Cursor *cursor = table_find(table, 0);
     void *node = get_page(table->pager, cursor->page_num);

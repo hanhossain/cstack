@@ -1,4 +1,5 @@
 use libc::{c_char, c_void, memcpy};
+use std::ffi::CStr;
 
 pub const COLUMN_USERNAME_SIZE: usize = 32;
 pub const COLUMN_EMAIL_SIZE: usize = 255;
@@ -56,4 +57,17 @@ pub unsafe extern "C" fn deserialize_row(source: *const c_void, destination: &mu
         source.add(EMAIL_OFFSET),
         EMAIL_SIZE,
     );
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn print_row(row: &Row) {
+    let username = ptr_to_str(&row.username);
+    let email = ptr_to_str(&row.email);
+    println!("({}, {}, {})", row.id, username, email);
+}
+
+unsafe fn ptr_to_str(value: &[c_char]) -> &str {
+    CStr::from_ptr(value.as_ptr())
+        .to_str()
+        .expect("failed to convert from c_char")
 }
