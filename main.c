@@ -86,13 +86,13 @@ const uint32_t USERNAME_OFFSET = ID_OFFSET + ID_SIZE;
 const uint32_t EMAIL_OFFSET = USERNAME_OFFSET + USERNAME_SIZE;
 const uint32_t ROW_SIZE = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
 
-void serialize_row(Row *source, void *destination) {
+void serialize_row(const Row *source, void *destination) {
     memcpy(destination + ID_OFFSET, &(source->id), ID_SIZE);
     memcpy(destination + USERNAME_OFFSET, &(source->username), USERNAME_SIZE);
     memcpy(destination + EMAIL_OFFSET, &(source->email), EMAIL_SIZE);
 }
 
-void deserialize_row(void *source, Row *destination) {
+void deserialize_row(const void *source, Row *destination) {
     memcpy(&(destination->id), source + ID_OFFSET, ID_SIZE);
     memcpy(&(destination->username), source + USERNAME_OFFSET, USERNAME_SIZE);
     memcpy(&(destination->email), source + EMAIL_OFFSET, EMAIL_SIZE);
@@ -249,7 +249,7 @@ typedef struct {
  * Until we start recycling free pages, new pages will always
  * go onto the end of the database file.
  */
-uint32_t get_unused_page_num(Pager *pager) {
+uint32_t get_unused_page_num(const Pager *pager) {
     return pager->num_pages;
 }
 
@@ -349,7 +349,7 @@ void internal_node_insert(Table *table, uint32_t parent_page_num, uint32_t child
     }
 }
 
-void leaf_node_split_and_insert(Cursor *cursor, uint32_t key, Row *value) {
+void leaf_node_split_and_insert(Cursor *cursor, uint32_t key, const Row *value) {
     // Create a new node and move half the cells over.
     // Insert the new value in one of the two nodes.
     // Update parent or create a new parent.
@@ -403,7 +403,7 @@ void leaf_node_split_and_insert(Cursor *cursor, uint32_t key, Row *value) {
     }
 }
 
-void leaf_node_insert(Cursor *cursor, uint32_t key, Row *value) {
+void leaf_node_insert(Cursor *cursor, uint32_t key, const Row *value) {
     void *node = get_page(cursor->table->pager, cursor->page_num);
 
     uint32_t num_cells = *leaf_node_num_cells(node);
@@ -551,11 +551,11 @@ PrepareResult prepare_statement(InputBuffer *input_buffer, Statement *statement)
     return PREPARE_UNRECOGNIZED_STATEMENT;
 }
 
-ExecuteResult execute_insert(Statement *statement, Table *table) {
+ExecuteResult execute_insert(const Statement *statement, Table *table) {
     void *node = get_page(table->pager, table->root_page_num);
     uint32_t num_cells = (*leaf_node_num_cells(node));
 
-    Row *row_to_insert = &(statement->row_to_insert);
+    const Row *row_to_insert = &(statement->row_to_insert);
     uint32_t key_to_insert = row_to_insert->id;
     Cursor *cursor = table_find(table, key_to_insert);
 
@@ -584,7 +584,7 @@ Cursor *table_start(Table *table) {
     return cursor;
 }
 
-ExecuteResult execute_select(Statement *statement, Table *table) {
+ExecuteResult execute_select(const Statement *statement, Table *table) {
     Cursor *cursor = table_start(table);
 
     Row row;
@@ -599,7 +599,7 @@ ExecuteResult execute_select(Statement *statement, Table *table) {
     return EXECUTE_SUCCESS;
 }
 
-ExecuteResult execute_statement(Statement *statement, Table *table) {
+ExecuteResult execute_statement(const Statement *statement, Table *table) {
     switch (statement->type) {
         case (STATEMENT_INSERT):
             return execute_insert(statement, table);
@@ -752,7 +752,7 @@ void print_tree(Pager *pager, uint32_t page_num, uint32_t indentation_level) {
     }
 }
 
-MetaCommandResult do_meta_command(InputBuffer *input_buffer, Table *table) {
+MetaCommandResult do_meta_command(const InputBuffer *input_buffer, Table *table) {
     if (strcmp(input_buffer->buffer, ".exit") == 0) {
         db_close(table);
         exit(EXIT_SUCCESS);
