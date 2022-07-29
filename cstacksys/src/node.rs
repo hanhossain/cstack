@@ -1,4 +1,5 @@
 #![allow(non_camel_case_types)]
+use crate::serialization::ROW_SIZE;
 use libc::{exit, EXIT_FAILURE};
 use std::ffi::c_void;
 use std::mem::size_of;
@@ -27,7 +28,16 @@ const INTERNAL_NODE_CHILD_SIZE: usize = size_of::<u32>();
 const INTERNAL_NODE_CELL_SIZE: usize = INTERNAL_NODE_CHILD_SIZE + INTERNAL_NODE_KEY_SIZE;
 
 // Leaf Node Header Layout
+const LEAF_NODE_NUM_CELLS_SIZE: usize = size_of::<u32>();
 const LEAF_NODE_NUM_CELLS_OFFSET: usize = COMMON_NODE_HEADER_SIZE;
+const LEAF_NODE_NEXT_LEAF_SIZE: usize = size_of::<u32>();
+const LEAF_NODE_HEADER_SIZE: usize =
+    COMMON_NODE_HEADER_SIZE + LEAF_NODE_NUM_CELLS_SIZE + LEAF_NODE_NEXT_LEAF_SIZE;
+
+// Leaf Node Body Layout
+const LEAF_NODE_KEY_SIZE: usize = size_of::<u32>();
+const LEAF_NODE_VALUE_SIZE: usize = ROW_SIZE;
+const LEAF_NODE_CELL_SIZE: usize = LEAF_NODE_KEY_SIZE + LEAF_NODE_VALUE_SIZE;
 
 #[repr(C)]
 pub enum NodeType {
@@ -128,4 +138,9 @@ pub unsafe extern "C" fn internal_node_key(node: *mut c_void, key_num: u32) -> *
 #[no_mangle]
 pub unsafe extern "C" fn leaf_node_num_cells(node: *mut c_void) -> *mut u32 {
     node.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn leaf_node_cell(node: *mut c_void, cell_num: u32) -> *mut c_void {
+    node.add(LEAF_NODE_HEADER_SIZE + cell_num as usize * LEAF_NODE_CELL_SIZE)
 }

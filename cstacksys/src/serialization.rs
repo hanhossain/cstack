@@ -9,6 +9,7 @@ pub const ID_SIZE: usize = 4;
 pub const ID_OFFSET: usize = 0;
 pub const USERNAME_OFFSET: usize = ID_OFFSET + ID_SIZE;
 pub const EMAIL_OFFSET: usize = USERNAME_OFFSET + USERNAME_SIZE;
+pub const ROW_SIZE: usize = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
 
 #[repr(C)]
 pub struct Row {
