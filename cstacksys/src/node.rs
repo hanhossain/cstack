@@ -31,6 +31,7 @@ const INTERNAL_NODE_CELL_SIZE: usize = INTERNAL_NODE_CHILD_SIZE + INTERNAL_NODE_
 const LEAF_NODE_NUM_CELLS_SIZE: usize = size_of::<u32>();
 const LEAF_NODE_NUM_CELLS_OFFSET: usize = COMMON_NODE_HEADER_SIZE;
 const LEAF_NODE_NEXT_LEAF_SIZE: usize = size_of::<u32>();
+const LEAF_NODE_NEXT_LEAF_OFFSET: usize = LEAF_NODE_NUM_CELLS_OFFSET + LEAF_NODE_NUM_CELLS_SIZE;
 const LEAF_NODE_HEADER_SIZE: usize =
     COMMON_NODE_HEADER_SIZE + LEAF_NODE_NUM_CELLS_SIZE + LEAF_NODE_NEXT_LEAF_SIZE;
 
@@ -143,4 +144,19 @@ pub unsafe extern "C" fn leaf_node_num_cells(node: *mut c_void) -> *mut u32 {
 #[no_mangle]
 pub unsafe extern "C" fn leaf_node_cell(node: *mut c_void, cell_num: u32) -> *mut c_void {
     node.add(LEAF_NODE_HEADER_SIZE + cell_num as usize * LEAF_NODE_CELL_SIZE)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn leaf_node_key(node: *mut c_void, cell_num: u32) -> *mut u32 {
+    leaf_node_cell(node, cell_num) as *mut u32
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn leaf_node_value(node: *mut c_void, cell_num: u32) -> *mut c_void {
+    leaf_node_cell(node, cell_num).add(LEAF_NODE_KEY_SIZE)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn leaf_node_next_leaf(node: *mut c_void) -> *mut u32 {
+    node.add(LEAF_NODE_NEXT_LEAF_OFFSET) as *mut u32
 }

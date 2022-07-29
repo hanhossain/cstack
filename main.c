@@ -82,18 +82,6 @@ const uint32_t INTERNAL_NODE_CELL_SIZE = INTERNAL_NODE_CHILD_SIZE + INTERNAL_NOD
 // Keep this small for testing
 const uint32_t INTERNAL_NODE_MAX_CELLS = 3;
 
-uint32_t *leaf_node_key(void *node, uint32_t cell_num) {
-    return leaf_node_cell(node, cell_num);
-}
-
-void *leaf_node_value(void *node, uint32_t cell_num) {
-    return leaf_node_cell(node, cell_num) + LEAF_NODE_KEY_SIZE;
-}
-
-uint32_t *leaf_node_next_leaf(void *node) {
-    return node + LEAF_NODE_NEXT_LEAF_OFFSET;
-}
-
 uint32_t get_node_max_key(void *node) {
     switch (get_node_type(node)) {
         case NODE_INTERNAL:
