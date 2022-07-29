@@ -1,4 +1,5 @@
 mod node;
+mod pager;
 mod repl;
 mod serialization;
 

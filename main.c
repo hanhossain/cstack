@@ -41,9 +41,6 @@ typedef struct {
     Row row_to_insert; // only used by insert statement
 } Statement;
 
-const uint32_t PAGE_SIZE = 4096;
-#define TABLE_MAX_PAGES 100
-
 /*
  * Common Node Header Layout
  */
@@ -81,51 +78,9 @@ const uint32_t INTERNAL_NODE_CELL_SIZE = INTERNAL_NODE_CHILD_SIZE + INTERNAL_NOD
 const uint32_t INTERNAL_NODE_MAX_CELLS = 3;
 
 typedef struct {
-    int file_descriptor;
-    uint32_t file_length;
-    uint32_t num_pages;
-    void *pages[TABLE_MAX_PAGES];
-} Pager;
-
-typedef struct {
     Pager *pager;
     uint32_t root_page_num;
 } Table;
-
-void *get_page(Pager *pager, uint32_t page_num) {
-    if (page_num > TABLE_MAX_PAGES) {
-        printf("Tried to fetch page number out of bounds. %d > %d\n", page_num, TABLE_MAX_PAGES);
-        exit(EXIT_FAILURE);
-    }
-
-    if (pager->pages[page_num] == NULL) {
-        // Cache miss. Allocate memory and load from file.
-        void *page = malloc(PAGE_SIZE);
-        uint32_t num_pages = pager->file_length / PAGE_SIZE;
-
-        // We might save a partial page at the end of the file
-        if (pager->file_length % PAGE_SIZE) {
-            num_pages += 1;
-        }
-
-        if (page_num <= num_pages) {
-            lseek(pager->file_descriptor, page_num * PAGE_SIZE, SEEK_SET);
-            ssize_t bytes_read = read(pager->file_descriptor, page, PAGE_SIZE);
-            if (bytes_read == -1) {
-                printf("Error reading file: %d\n", errno);
-                exit(EXIT_FAILURE);
-            }
-        }
-
-        pager->pages[page_num] = page;
-
-        if (page_num >= pager->num_pages) {
-            pager->num_pages = page_num + 1;
-        }
-    }
-
-    return pager->pages[page_num];
-}
 
 typedef struct {
     Table *table;
@@ -133,14 +88,6 @@ typedef struct {
     uint32_t cell_num;
     bool end_of_table; // Indicates a position one past the last element
 } Cursor;
-
-/*
- * Until we start recycling free pages, new pages will always
- * go onto the end of the database file.
- */
-uint32_t get_unused_page_num(const Pager *pager) {
-    return pager->num_pages;
-}
 
 void create_new_root(Table *table, uint32_t right_child_page_num) {
     /*
