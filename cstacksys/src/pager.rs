@@ -1,14 +1,14 @@
-use libc::{c_void, exit, lseek, malloc, read, EXIT_FAILURE, SEEK_SET};
+use libc::{c_void, exit, lseek, malloc, read, write, EXIT_FAILURE, SEEK_SET};
 
 pub const TABLE_MAX_PAGES: usize = 100;
 pub const PAGE_SIZE: usize = 4096;
 
 #[repr(C)]
 pub struct Pager {
-    file_descriptor: i32,
-    file_length: u32,
-    num_pages: u32,
-    pages: [*mut c_void; TABLE_MAX_PAGES],
+    pub file_descriptor: i32,
+    pub file_length: u32,
+    pub num_pages: u32,
+    pub pages: [*mut c_void; TABLE_MAX_PAGES],
 }
 
 // Until we start recycling free pages, new pages will always
@@ -56,4 +56,29 @@ pub unsafe extern "C" fn get_page(pager: &mut Pager, page_num: usize) -> *mut c_
     }
 
     pager.pages[page_num]
+}
+
+pub(crate) unsafe fn pager_flush(pager: &mut Pager, page_num: usize) {
+    if pager.pages[page_num].is_null() {
+        println!("Tried to flush null page");
+        exit(EXIT_FAILURE);
+    }
+
+    let offset = lseek(
+        pager.file_descriptor,
+        (page_num * PAGE_SIZE) as i64,
+        SEEK_SET,
+    );
+
+    if offset == -1 {
+        println!("Error seeking");
+        exit(EXIT_FAILURE);
+    }
+
+    let bytes_written = write(pager.file_descriptor, pager.pages[page_num], PAGE_SIZE);
+
+    if bytes_written == -1 {
+        println!("Error writing");
+        exit(EXIT_FAILURE);
+    }
 }

@@ -1,6 +1,7 @@
 use crate::node::{leaf_node_next_leaf, leaf_node_num_cells, leaf_node_value};
-use crate::pager::{get_page, Pager};
-use libc::c_void;
+use crate::pager::{get_page, pager_flush, Pager, TABLE_MAX_PAGES};
+use libc::{c_void, close, exit, free, EXIT_FAILURE};
+use std::ptr::null_mut;
 
 #[repr(C)]
 pub struct Table {
@@ -40,4 +41,34 @@ pub unsafe extern "C" fn cursor_advance(cursor: &mut Cursor) {
             cursor.cell_num = 0;
         }
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn db_close(table: &mut Table) {
+    let pager = &mut *table.pager;
+
+    for i in 0..pager.num_pages as usize {
+        if pager.pages[i as usize].is_null() {
+            continue;
+        }
+        pager_flush(pager, i);
+        free(pager.pages[i]);
+        pager.pages[i] = null_mut();
+    }
+
+    let result = close(pager.file_descriptor);
+    if result == -1 {
+        println!("Error closing db file.");
+        exit(EXIT_FAILURE);
+    }
+
+    for i in 0..TABLE_MAX_PAGES {
+        let page = pager.pages[i];
+        if !page.is_null() {
+            free(page);
+            pager.pages[i] = null_mut();
+        }
+    }
+    free(table.pager as *mut c_void);
+    free(table as *mut Table as *mut c_void);
 }

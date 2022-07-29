@@ -357,55 +357,6 @@ Table *db_open(const char *filename) {
     return table;
 }
 
-void pager_flush(Pager *pager, uint32_t page_num) {
-    if (pager->pages[page_num] == NULL) {
-        printf("Tried to flush null page\n");
-        exit(EXIT_FAILURE);
-    }
-
-    off_t offset = lseek(pager->file_descriptor, page_num * PAGE_SIZE, SEEK_SET);
-
-    if (offset == -1) {
-        printf("Error seeking%d\n", errno);
-        exit(EXIT_FAILURE);
-    }
-
-    ssize_t bytes_written = write(pager->file_descriptor, pager->pages[page_num], PAGE_SIZE);
-
-    if (bytes_written == -1) {
-        printf("Error waiting: %d\n", errno);
-        exit(EXIT_FAILURE);
-    }
-}
-
-void db_close(Table *table) {
-    Pager *pager = table->pager;
-
-    for (uint32_t i = 0; i < pager->num_pages; i++) {
-        if (pager->pages[i] == NULL) {
-            continue;
-        }
-        pager_flush(pager, i);
-        free(pager->pages[i]);
-        pager->pages[i] = NULL;
-    }
-
-    int result = close(pager->file_descriptor);
-    if (result == -1) {
-        printf("Error closing db file.\n");
-        exit(EXIT_FAILURE);
-    }
-    for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
-        void *page = pager->pages[i];
-        if (page) {
-            free(page);
-            pager->pages[i] = NULL;
-        }
-    }
-    free(pager);
-    free(table);
-}
-
 MetaCommandResult do_meta_command(const InputBuffer *input_buffer, Table *table) {
     if (strcmp(input_buffer->buffer, ".exit") == 0) {
         db_close(table);

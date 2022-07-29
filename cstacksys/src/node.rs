@@ -45,9 +45,6 @@ pub(crate) const LEAF_NODE_CELL_SIZE: usize = LEAF_NODE_KEY_SIZE + LEAF_NODE_VAL
 pub(crate) const LEAF_NODE_SPACE_FOR_CELLS: usize = PAGE_SIZE - LEAF_NODE_HEADER_SIZE;
 pub(crate) const LEAF_NODE_MAX_CELLS: usize = LEAF_NODE_SPACE_FOR_CELLS / LEAF_NODE_CELL_SIZE;
 
-const LEAF_NODE_RIGHT_SPLIT_COUNT: usize = (LEAF_NODE_MAX_CELLS + 1) / 2;
-const LEAF_NODE_LEFT_SPLIT_COUNT: usize = (LEAF_NODE_MAX_CELLS + 1) - LEAF_NODE_RIGHT_SPLIT_COUNT;
-
 // Internal Node Body Layout
 const INTERNAL_NODE_MAX_CELLS: usize = 3;
 
@@ -82,8 +79,7 @@ pub unsafe extern "C" fn get_node_type(node: *const c_void) -> NodeType {
     NodeType::from(value)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn set_node_type(node: *mut c_void, node_type: NodeType) {
+unsafe fn set_node_type(node: *mut c_void, node_type: NodeType) {
     let value = u8::from(node_type);
     *(node.add(NODE_TYPE_OFFSET) as *mut u8) = value;
 }
@@ -105,23 +101,19 @@ pub unsafe extern "C" fn node_parent(node: *mut c_void) -> *mut u32 {
     node.add(PARENT_POINTER_OFFSET) as *mut u32
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn internal_node_num_keys(node: *mut c_void) -> *mut u32 {
+pub(crate) unsafe fn internal_node_num_keys(node: *mut c_void) -> *mut u32 {
     node.add(INTERNAL_NODE_NUM_KEYS_OFFSET) as *mut u32
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn internal_node_right_child(node: *mut c_void) -> *mut u32 {
+pub(crate) unsafe fn internal_node_right_child(node: *mut c_void) -> *mut u32 {
     node.add(INTERNAL_NODE_RIGHT_CHILD_OFFSET) as *mut u32
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn internal_node_cell(node: *mut c_void, cell_num: u32) -> *mut u32 {
+unsafe fn internal_node_cell(node: *mut c_void, cell_num: u32) -> *mut u32 {
     node.add(INTERNAL_NODE_HEADER_SIZE + cell_num as usize * INTERNAL_NODE_CELL_SIZE) as *mut u32
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn initialize_internal_node(node: *mut c_void) {
+unsafe fn initialize_internal_node(node: *mut c_void) {
     set_node_type(node, NodeType::NODE_INTERNAL);
     set_node_root(node, false);
     *internal_node_num_keys(node) = 0;
@@ -142,8 +134,7 @@ pub unsafe extern "C" fn internal_node_child(node: *mut c_void, child_num: u32) 
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn internal_node_key(node: *mut c_void, key_num: u32) -> *mut u32 {
+pub(crate) unsafe fn internal_node_key(node: *mut c_void, key_num: u32) -> *mut u32 {
     internal_node_cell(node, key_num).add(INTERNAL_NODE_CHILD_SIZE)
 }
 
