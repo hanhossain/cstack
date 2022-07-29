@@ -160,3 +160,19 @@ pub unsafe extern "C" fn leaf_node_value(node: *mut c_void, cell_num: u32) -> *m
 pub unsafe extern "C" fn leaf_node_next_leaf(node: *mut c_void) -> *mut u32 {
     node.add(LEAF_NODE_NEXT_LEAF_OFFSET) as *mut u32
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn get_node_max_key(node: *mut c_void) -> u32 {
+    match get_node_type(node) {
+        NodeType::NODE_INTERNAL => *internal_node_key(node, *internal_node_num_keys(node) - 1),
+        NodeType::NODE_LEAF => *leaf_node_key(node, *leaf_node_num_cells(node) - 1),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn initialize_leaf_node(node: *mut c_void) {
+    set_node_type(node, NodeType::NODE_LEAF);
+    set_node_root(node, false);
+    *leaf_node_num_cells(node) = 0;
+    *leaf_node_next_leaf(node) = 0; // 0 represents no sibling
+}

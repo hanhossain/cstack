@@ -56,9 +56,7 @@ const uint8_t COMMON_NODE_HEADER_SIZE = NODE_TYPE_SIZE + IS_ROOT_SIZE + PARENT_P
  * Leaf Node Header Layout
  */
 const uint32_t LEAF_NODE_NUM_CELLS_SIZE = sizeof(uint32_t);
-const uint32_t LEAF_NODE_NUM_CELLS_OFFSET = COMMON_NODE_HEADER_SIZE;
 const uint32_t LEAF_NODE_NEXT_LEAF_SIZE = sizeof(uint32_t);
-const uint32_t LEAF_NODE_NEXT_LEAF_OFFSET = LEAF_NODE_NUM_CELLS_OFFSET + LEAF_NODE_NUM_CELLS_SIZE;
 const uint32_t LEAF_NODE_HEADER_SIZE = COMMON_NODE_HEADER_SIZE + LEAF_NODE_NUM_CELLS_SIZE + LEAF_NODE_NEXT_LEAF_SIZE;
 
 /*
@@ -81,22 +79,6 @@ const uint32_t INTERNAL_NODE_CHILD_SIZE = sizeof(uint32_t);
 const uint32_t INTERNAL_NODE_CELL_SIZE = INTERNAL_NODE_CHILD_SIZE + INTERNAL_NODE_KEY_SIZE;
 // Keep this small for testing
 const uint32_t INTERNAL_NODE_MAX_CELLS = 3;
-
-uint32_t get_node_max_key(void *node) {
-    switch (get_node_type(node)) {
-        case NODE_INTERNAL:
-            return *internal_node_key(node, *internal_node_num_keys(node) - 1);
-        case NODE_LEAF:
-            return *leaf_node_key(node, *leaf_node_num_cells(node) - 1);
-    }
-}
-
-void initialize_leaf_node(void *node) {
-    set_node_type(node, NODE_LEAF);
-    set_node_root(node, false);
-    *leaf_node_num_cells(node) = 0;
-    *leaf_node_next_leaf(node) = 0; // 0 represents no sibling
-}
 
 typedef struct {
     int file_descriptor;
