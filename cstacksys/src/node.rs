@@ -26,6 +26,9 @@ const INTERNAL_NODE_KEY_SIZE: usize = size_of::<u32>();
 const INTERNAL_NODE_CHILD_SIZE: usize = size_of::<u32>();
 const INTERNAL_NODE_CELL_SIZE: usize = INTERNAL_NODE_CHILD_SIZE + INTERNAL_NODE_KEY_SIZE;
 
+// Leaf Node Header Layout
+const LEAF_NODE_NUM_CELLS_OFFSET: usize = COMMON_NODE_HEADER_SIZE;
+
 #[repr(C)]
 pub enum NodeType {
     NODE_INTERNAL,
@@ -120,4 +123,9 @@ pub unsafe extern "C" fn internal_node_child(node: *mut c_void, child_num: u32) 
 #[no_mangle]
 pub unsafe extern "C" fn internal_node_key(node: *mut c_void, key_num: u32) -> *mut u32 {
     internal_node_cell(node, key_num).add(INTERNAL_NODE_CHILD_SIZE)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn leaf_node_num_cells(node: *mut c_void) -> *mut u32 {
+    node.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32
 }
