@@ -77,13 +77,6 @@ const uint32_t INTERNAL_NODE_CELL_SIZE = INTERNAL_NODE_CHILD_SIZE + INTERNAL_NOD
 // Keep this small for testing
 const uint32_t INTERNAL_NODE_MAX_CELLS = 3;
 
-typedef struct {
-    Table *table;
-    uint32_t page_num;
-    uint32_t cell_num;
-    bool end_of_table; // Indicates a position one past the last element
-} Cursor;
-
 void leaf_node_split_and_insert(Cursor *cursor, uint32_t key, const Row *value) {
     // Create a new node and move half the cells over.
     // Insert the new value in one of the two nodes.
@@ -216,30 +209,6 @@ Cursor *table_find(Table *table, uint32_t key) {
         return leaf_node_find(table, root_page_num, key);
     } else {
         return internal_node_find(table, root_page_num, key);
-    }
-}
-
-void *cursor_value(Cursor *cursor) {
-    uint32_t page_num = cursor->page_num;
-    void *page = get_page(cursor->table->pager, page_num);
-    return leaf_node_value(page, cursor->cell_num);
-}
-
-void cursor_advance(Cursor *cursor) {
-    uint32_t page_num = cursor->page_num;
-    void *node = get_page(cursor->table->pager, page_num);
-
-    cursor->cell_num += 1;
-    if (cursor->cell_num >= (*leaf_node_num_cells(node))) {
-        // Advance to next leaf node
-        uint32_t next_page_num = *leaf_node_next_leaf(node);
-        if (next_page_num == 0) {
-            // This was rightmost leaf
-            cursor->end_of_table = true;
-        } else {
-            cursor->page_num = next_page_num;
-            cursor->cell_num = 0;
-        }
     }
 }
 
