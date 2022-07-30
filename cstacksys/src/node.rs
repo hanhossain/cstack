@@ -76,8 +76,7 @@ impl From<NodeType> for u8 {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn get_node_type(node: *const c_void) -> NodeType {
+pub(crate) unsafe fn get_node_type(node: *const c_void) -> NodeType {
     let value = *(node.add(NODE_TYPE_OFFSET) as *const u8);
     NodeType::from(value)
 }
@@ -269,8 +268,7 @@ unsafe fn internal_node_insert(table: &mut Table, parent_page_num: u32, child_pa
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) -> *mut Cursor {
+pub(crate) unsafe fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) -> *mut Cursor {
     let node = get_page(&mut *table.pager, page_num as usize);
     let num_cells = *leaf_node_num_cells(node);
 
@@ -301,12 +299,7 @@ pub unsafe extern "C" fn leaf_node_find(table: &mut Table, page_num: u32, key: u
     Box::into_raw(cursor)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn internal_node_find(
-    table: &mut Table,
-    page_num: u32,
-    key: u32,
-) -> *mut Cursor {
+pub(crate) unsafe fn internal_node_find(table: &mut Table, page_num: u32, key: u32) -> *mut Cursor {
     let node = get_page(&mut *table.pager, page_num as usize);
     let child_index = internal_node_find_child(node, key);
     let child_num = *internal_node_child(node, child_index);

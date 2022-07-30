@@ -1,4 +1,7 @@
-use crate::node::{leaf_node_next_leaf, leaf_node_num_cells, leaf_node_value};
+use crate::node::{
+    get_node_type, internal_node_find, leaf_node_find, leaf_node_next_leaf, leaf_node_num_cells,
+    leaf_node_value, NodeType,
+};
 use crate::pager::{get_page, pager_flush, Pager, TABLE_MAX_PAGES};
 use libc::{c_void, close, exit, free, EXIT_FAILURE};
 use std::ptr::null_mut;
@@ -70,4 +73,18 @@ pub(crate) unsafe fn db_close(table: &mut Table) {
     }
     free(table.pager as *mut c_void);
     free(table as *mut Table as *mut c_void);
+}
+
+/// Return the position of the given key.
+/// If the key is not present, return the position
+/// where it should be inserted.
+#[no_mangle]
+pub unsafe extern "C" fn table_find(table: &mut Table, key: u32) -> *mut Cursor {
+    let root_page_num = table.root_page_num;
+    let root_node = get_page(&mut *table.pager, root_page_num as usize);
+
+    match get_node_type(root_node) {
+        NodeType::NODE_INTERNAL => internal_node_find(table, root_page_num, key),
+        NodeType::NODE_LEAF => leaf_node_find(table, root_page_num, key),
+    }
 }
