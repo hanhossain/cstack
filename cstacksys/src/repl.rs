@@ -63,8 +63,7 @@ pub extern "C" fn read_input(input_buffer: &mut InputBuffer) {
     input_buffer.input_length = bytes_read;
 }
 
-#[no_mangle]
-pub extern "C" fn print_constants() {
+pub(crate) fn print_constants() {
     println!("ROW_SIZE: {}", ROW_SIZE);
     println!("COMMON_NODE_HEADER_SIZE: {}", COMMON_NODE_HEADER_SIZE);
     println!("LEAF_NODE_HEADER_SIZE: {}", LEAF_NODE_HEADER_SIZE);
@@ -73,8 +72,7 @@ pub extern "C" fn print_constants() {
     println!("LEAF_NODE_MAX_CELLS: {}", LEAF_NODE_MAX_CELLS);
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn print_tree(pager: &mut Pager, page_num: u32, indentation_level: u32) {
+pub(crate) unsafe fn print_tree(pager: &mut Pager, page_num: u32, indentation_level: u32) {
     let node = get_page(pager, page_num as usize);
 
     match get_node_type(node) {

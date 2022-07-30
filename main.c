@@ -17,11 +17,6 @@ typedef enum {
     EXECUTE_TABLE_FULL
 } ExecuteResult;
 
-typedef enum {
-    META_COMMAND_SUCCESS,
-    META_COMMAND_UNRECOGNIZED_COMMAND
-} MetaCommandResult;
-
 /*
  * Common Node Header Layout
  */
@@ -293,28 +288,6 @@ Table *db_open(const char *filename) {
     }
 
     return table;
-}
-
-MetaCommandResult do_meta_command(const InputBuffer *input_buffer, Table *table) {
-    if (strcmp(input_buffer->buffer, ".exit") == 0) {
-        db_close(table);
-        exit(EXIT_SUCCESS);
-    } else if (strcmp(input_buffer->buffer, ".btree") == 0) {
-        printf("Tree:\n");
-        fflush(stdout);
-        print_tree(table->pager, 0, 0);
-        return META_COMMAND_SUCCESS;
-    } else if (strcmp(input_buffer->buffer, ".constants") == 0) {
-        printf("Constants:\n");
-        fflush(stdout);
-        print_constants();
-        return META_COMMAND_SUCCESS;
-    } else if (strcmp(input_buffer->buffer, ".hello") == 0) {
-        hello_world();
-        return META_COMMAND_SUCCESS;
-    } else {
-        return META_COMMAND_UNRECOGNIZED_COMMAND;
-    }
 }
 
 int main(int argc, char *argv[]) {

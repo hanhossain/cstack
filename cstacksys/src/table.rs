@@ -43,8 +43,7 @@ pub unsafe extern "C" fn cursor_advance(cursor: &mut Cursor) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn db_close(table: &mut Table) {
+pub(crate) unsafe fn db_close(table: &mut Table) {
     let pager = &mut *table.pager;
 
     for i in 0..pager.num_pages as usize {

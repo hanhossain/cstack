@@ -5,11 +5,6 @@ mod serialization;
 mod table;
 mod vm;
 
-#[no_mangle]
-pub extern "C" fn hello_world() {
-    println!("Hello world!");
-}
-
 #[allow(unused_doc_comments)]
 /// cbindgen:ignore
 extern "C" {

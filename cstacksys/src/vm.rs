@@ -1,8 +1,9 @@
 #![allow(non_camel_case_types)]
 
-use crate::repl::InputBuffer;
+use crate::repl::{print_constants, print_tree, InputBuffer};
 use crate::serialization::{Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE};
-use libc::strcpy;
+use crate::table::{db_close, Table};
+use libc::{exit, strcpy, EXIT_SUCCESS};
 use std::ffi::{CStr, CString};
 use std::str::FromStr;
 
@@ -83,4 +84,35 @@ unsafe fn prepare_insert(
     );
 
     PrepareResult::PREPARE_SUCCESS
+}
+
+#[repr(C)]
+pub enum MetaCommandResult {
+    META_COMMAND_SUCCESS,
+    META_COMMAND_UNRECOGNIZED_COMMAND,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn do_meta_command(
+    input_buffer: &InputBuffer,
+    table: &mut Table,
+) -> MetaCommandResult {
+    let query = CStr::from_ptr(input_buffer.buffer).to_str().unwrap();
+    match query {
+        ".exit" => {
+            db_close(table);
+            exit(EXIT_SUCCESS);
+        }
+        ".btree" => {
+            println!("Tree:");
+            print_tree(&mut *table.pager, 0, 0);
+            MetaCommandResult::META_COMMAND_SUCCESS
+        }
+        ".constants" => {
+            println!("Constants:");
+            print_constants();
+            MetaCommandResult::META_COMMAND_SUCCESS
+        }
+        _ => MetaCommandResult::META_COMMAND_UNRECOGNIZED_COMMAND,
+    }
 }
