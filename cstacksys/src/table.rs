@@ -69,7 +69,7 @@ pub(crate) unsafe fn db_close(table: &mut Table) {
             pager.pages[i] = null_mut();
         }
     }
-    free(table.pager as *mut c_void);
+    let _ = Box::from_raw(table.pager);
     free(table as *mut Table as *mut c_void);
 }
 

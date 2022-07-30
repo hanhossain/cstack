@@ -1,4 +1,8 @@
-use libc::{c_void, exit, lseek, malloc, read, write, EXIT_FAILURE, SEEK_SET};
+use libc::{
+    c_char, c_void, exit, lseek, malloc, open, read, write, EXIT_FAILURE, O_CREAT, O_RDWR,
+    SEEK_END, SEEK_SET,
+};
+use std::ptr::null_mut;
 
 pub const TABLE_MAX_PAGES: usize = 100;
 pub const PAGE_SIZE: usize = 4096;
@@ -80,4 +84,26 @@ pub(crate) unsafe fn pager_flush(pager: &mut Pager, page_num: usize) {
         println!("Error writing");
         exit(EXIT_FAILURE);
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn pager_open(filename: *const c_char) -> Box<Pager> {
+    let fd = open(filename, O_RDWR | O_CREAT);
+    if fd == -1 {
+        println!("Unable to open file");
+        exit(EXIT_FAILURE);
+    }
+
+    let file_length = lseek(fd, 0, SEEK_END);
+    if file_length as usize % PAGE_SIZE != 0 {
+        println!("Db file is not a whole number of pages. Corrupt file.");
+        exit(EXIT_FAILURE);
+    }
+
+    Box::new(Pager {
+        file_length: file_length as u32,
+        file_descriptor: fd,
+        num_pages: file_length as u32 / PAGE_SIZE as u32,
+        pages: [null_mut(); TABLE_MAX_PAGES],
+    })
 }
