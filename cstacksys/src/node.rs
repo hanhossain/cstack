@@ -119,8 +119,7 @@ unsafe fn initialize_internal_node(node: *mut c_void) {
     *internal_node_num_keys(node) = 0;
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn internal_node_child(node: *mut c_void, child_num: u32) -> *mut u32 {
+pub(crate) unsafe fn internal_node_child(node: *mut c_void, child_num: u32) -> *mut u32 {
     let num_keys = *internal_node_num_keys(node);
     if child_num > num_keys {
         println!("Tried to access child_num {child_num} > num_keys {num_keys}");
@@ -180,8 +179,7 @@ pub unsafe extern "C" fn initialize_leaf_node(node: *mut c_void) {
 }
 
 /// Returns the index of the child which should contain the given key.
-#[no_mangle]
-pub unsafe extern "C" fn internal_node_find_child(node: *mut c_void, key: u32) -> u32 {
+unsafe fn internal_node_find_child(node: *mut c_void, key: u32) -> u32 {
     let num_keys = *internal_node_num_keys(node);
 
     // binary search
@@ -311,4 +309,20 @@ pub unsafe extern "C" fn leaf_node_find(table: &mut Table, page_num: u32, key: u
 
     cursor.cell_num = min_index;
     Box::into_raw(cursor)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn internal_node_find(
+    table: &mut Table,
+    page_num: u32,
+    key: u32,
+) -> *mut Cursor {
+    let node = get_page(&mut *table.pager, page_num as usize);
+    let child_index = internal_node_find_child(node, key);
+    let child_num = *internal_node_child(node, child_index);
+    let child = get_page(&mut *table.pager, child_num as usize);
+    match get_node_type(child) {
+        NodeType::NODE_LEAF => leaf_node_find(table, child_num, key),
+        NodeType::NODE_INTERNAL => internal_node_find(table, child_num, key),
+    }
 }

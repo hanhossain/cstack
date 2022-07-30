@@ -44,15 +44,6 @@ const uint32_t LEAF_NODE_MAX_CELLS = LEAF_NODE_SPACE_FOR_CELLS / LEAF_NODE_CELL_
 const uint32_t LEAF_NODE_RIGHT_SPLIT_COUNT = (LEAF_NODE_MAX_CELLS + 1) / 2;
 const uint32_t LEAF_NODE_LEFT_SPLIT_COUNT = (LEAF_NODE_MAX_CELLS + 1) - LEAF_NODE_RIGHT_SPLIT_COUNT;
 
-/*
- * Internal Node Body Layout
- */
-const uint32_t INTERNAL_NODE_KEY_SIZE = sizeof(uint32_t);
-const uint32_t INTERNAL_NODE_CHILD_SIZE = sizeof(uint32_t);
-const uint32_t INTERNAL_NODE_CELL_SIZE = INTERNAL_NODE_CHILD_SIZE + INTERNAL_NODE_KEY_SIZE;
-// Keep this small for testing
-const uint32_t INTERNAL_NODE_MAX_CELLS = 3;
-
 void leaf_node_split_and_insert(Cursor *cursor, uint32_t key, const Row *value) {
     // Create a new node and move half the cells over.
     // Insert the new value in one of the two nodes.
@@ -127,20 +118,6 @@ void leaf_node_insert(Cursor *cursor, uint32_t key, const Row *value) {
     *(leaf_node_num_cells(node)) += 1;
     *(leaf_node_key(node, cursor->cell_num)) = key;
     serialize_row(value, leaf_node_value(node, cursor->cell_num));
-}
-
-Cursor *internal_node_find(Table *table, uint32_t page_num, uint32_t key) {
-    void *node = get_page(table->pager, page_num);
-
-    uint32_t child_index = internal_node_find_child(node, key);
-    uint32_t child_num = *internal_node_child(node, child_index);
-    void *child = get_page(table->pager, child_num);
-    switch (get_node_type(child)) {
-        case NODE_LEAF:
-            return leaf_node_find(table, child_num, key);
-        case NODE_INTERNAL:
-            return internal_node_find(table, child_num, key);
-    }
 }
 
 /*
