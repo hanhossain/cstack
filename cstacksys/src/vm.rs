@@ -130,8 +130,7 @@ pub enum ExecuteResult {
     EXECUTE_DUPLICATE_KEY,
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn execute_insert(statement: &Statement, table: &mut Table) -> ExecuteResult {
+unsafe fn execute_insert(statement: &Statement, table: &mut Table) -> ExecuteResult {
     let node = get_page(&mut *table.pager, table.root_page_num as usize);
     let num_cells = *leaf_node_num_cells(node);
 
@@ -150,11 +149,7 @@ pub unsafe extern "C" fn execute_insert(statement: &Statement, table: &mut Table
     ExecuteResult::EXECUTE_SUCCESS
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn execute_select(
-    _statement: &Statement,
-    table: &mut Table,
-) -> ExecuteResult {
+unsafe fn execute_select(_statement: &Statement, table: &mut Table) -> ExecuteResult {
     let cursor = &mut *table_start(table);
     while !cursor.end_of_table {
         let mut row = Row {
@@ -169,4 +164,15 @@ pub unsafe extern "C" fn execute_select(
 
     let _ = Box::from_raw(cursor as *mut Cursor);
     ExecuteResult::EXECUTE_SUCCESS
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn execute_statement(
+    statement: &Statement,
+    table: &mut Table,
+) -> ExecuteResult {
+    match statement.r#type {
+        StatementType::STATEMENT_INSERT => execute_insert(statement, table),
+        StatementType::STATEMENT_SELECT => execute_select(statement, table),
+    }
 }

@@ -11,15 +11,6 @@ void callback_printf(const char *string) {
     fflush(stdout);
 }
 
-ExecuteResult execute_statement(const Statement *statement, Table *table) {
-    switch (statement->type) {
-        case (STATEMENT_INSERT):
-            return execute_insert(statement, table);
-        case (STATEMENT_SELECT):
-            return execute_select(statement, table);
-    }
-}
-
 Pager *pager_open(const char *filename) {
     int fd = open(filename,
                   O_RDWR | // Read/Write mode
