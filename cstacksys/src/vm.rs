@@ -3,8 +3,13 @@
 use crate::node::{leaf_node_insert, leaf_node_key, leaf_node_num_cells};
 use crate::pager::get_page;
 use crate::repl::{print_constants, print_tree, InputBuffer};
-use crate::serialization::{Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE};
-use crate::table::{db_close, table_find, Table};
+use crate::serialization::{
+    deserialize_row, print_row, Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE, EMAIL_SIZE,
+    USERNAME_SIZE,
+};
+use crate::table::{
+    cursor_advance, cursor_value, db_close, table_find, table_start, Cursor, Table,
+};
 use libc::{exit, strcpy, EXIT_SUCCESS};
 use std::ffi::{CStr, CString};
 use std::str::FromStr;
@@ -142,5 +147,26 @@ pub unsafe extern "C" fn execute_insert(statement: &Statement, table: &mut Table
     }
 
     leaf_node_insert(cursor, row_to_insert.id, row_to_insert);
+    ExecuteResult::EXECUTE_SUCCESS
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn execute_select(
+    _statement: &Statement,
+    table: &mut Table,
+) -> ExecuteResult {
+    let cursor = &mut *table_start(table);
+    while !cursor.end_of_table {
+        let mut row = Row {
+            id: 0,
+            email: [0; EMAIL_SIZE],
+            username: [0; USERNAME_SIZE],
+        };
+        deserialize_row(cursor_value(cursor), &mut row);
+        print_row(&row);
+        cursor_advance(cursor);
+    }
+
+    let _ = Box::from_raw(cursor as *mut Cursor);
     ExecuteResult::EXECUTE_SUCCESS
 }

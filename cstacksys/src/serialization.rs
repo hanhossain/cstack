@@ -38,8 +38,7 @@ pub(crate) unsafe fn serialize_row(source: &Row, destination: *mut c_void) {
     );
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn deserialize_row(source: *const c_void, destination: &mut Row) {
+pub(crate) unsafe fn deserialize_row(source: *const c_void, destination: &mut Row) {
     memcpy(
         &mut destination.id as *mut u32 as *mut c_void,
         source.add(ID_OFFSET),
@@ -59,8 +58,7 @@ pub unsafe extern "C" fn deserialize_row(source: *const c_void, destination: &mu
     );
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn print_row(row: &Row) {
+pub(crate) unsafe fn print_row(row: &Row) {
     let username = ptr_to_str(&row.username);
     let email = ptr_to_str(&row.email);
     println!("({}, {}, {})", row.id, username, email);

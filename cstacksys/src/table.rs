@@ -21,14 +21,12 @@ pub struct Cursor {
     pub end_of_table: bool,
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn cursor_value(cursor: &mut Cursor) -> *mut c_void {
+pub(crate) unsafe fn cursor_value(cursor: &mut Cursor) -> *mut c_void {
     let page = get_page(&mut *(&mut *cursor.table).pager, cursor.page_num as usize);
     leaf_node_value(page, cursor.cell_num)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn cursor_advance(cursor: &mut Cursor) {
+pub(crate) unsafe fn cursor_advance(cursor: &mut Cursor) {
     let page_num = cursor.page_num;
     let node = get_page(&mut *(&mut *cursor.table).pager, page_num as usize);
 
@@ -88,8 +86,7 @@ pub(crate) unsafe fn table_find(table: &mut Table, key: u32) -> *mut Cursor {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn table_start(table: &mut Table) -> *mut Cursor {
+pub(crate) unsafe fn table_start(table: &mut Table) -> *mut Cursor {
     let cursor_ptr = table_find(table, 0);
     let cursor = &mut *cursor_ptr;
     let node = get_page(&mut *table.pager, cursor.page_num as usize);
