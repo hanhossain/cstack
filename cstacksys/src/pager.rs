@@ -13,8 +13,7 @@ pub struct Pager {
 
 // Until we start recycling free pages, new pages will always
 // go onto the end of the database file.
-#[no_mangle]
-pub extern "C" fn get_unused_page_num(pager: &Pager) -> u32 {
+pub(crate) fn get_unused_page_num(pager: &Pager) -> u32 {
     pager.num_pages
 }
 

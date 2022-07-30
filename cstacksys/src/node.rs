@@ -1,6 +1,6 @@
 #![allow(non_camel_case_types)]
 use crate::pager::{get_page, get_unused_page_num, PAGE_SIZE};
-use crate::serialization::ROW_SIZE;
+use crate::serialization::{serialize_row, Row, ROW_SIZE};
 use crate::table::{Cursor, Table};
 use libc::{exit, memcpy, EXIT_FAILURE};
 use std::ffi::c_void;
@@ -45,6 +45,9 @@ pub(crate) const LEAF_NODE_CELL_SIZE: usize = LEAF_NODE_KEY_SIZE + LEAF_NODE_VAL
 pub(crate) const LEAF_NODE_SPACE_FOR_CELLS: usize = PAGE_SIZE - LEAF_NODE_HEADER_SIZE;
 pub(crate) const LEAF_NODE_MAX_CELLS: usize = LEAF_NODE_SPACE_FOR_CELLS / LEAF_NODE_CELL_SIZE;
 
+const LEAF_NODE_RIGHT_SPLIT_COUNT: usize = (LEAF_NODE_MAX_CELLS + 1) / 2;
+const LEAF_NODE_LEFT_SPLIT_COUNT: usize = (LEAF_NODE_MAX_CELLS + 1) - LEAF_NODE_RIGHT_SPLIT_COUNT;
+
 // Internal Node Body Layout
 const INTERNAL_NODE_MAX_CELLS: usize = 3;
 
@@ -84,8 +87,7 @@ unsafe fn set_node_type(node: *mut c_void, node_type: NodeType) {
     *(node.add(NODE_TYPE_OFFSET) as *mut u8) = value;
 }
 
-#[no_mangle]
-pub extern "C" fn is_node_root(node: *const c_void) -> bool {
+fn is_node_root(node: *const c_void) -> bool {
     let value = unsafe { *(node.add(IS_ROOT_OFFSET) as *const u8) };
     value != 0
 }
@@ -96,8 +98,7 @@ pub unsafe extern "C" fn set_node_root(node: *mut c_void, is_root: bool) {
     *(node.add(IS_ROOT_OFFSET) as *mut u8) = value;
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn node_parent(node: *mut c_void) -> *mut u32 {
+unsafe fn node_parent(node: *mut c_void) -> *mut u32 {
     node.add(PARENT_POINTER_OFFSET) as *mut u32
 }
 
@@ -157,13 +158,11 @@ pub unsafe extern "C" fn leaf_node_value(node: *mut c_void, cell_num: u32) -> *m
     leaf_node_cell(node, cell_num).add(LEAF_NODE_KEY_SIZE)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn leaf_node_next_leaf(node: *mut c_void) -> *mut u32 {
+pub(crate) unsafe fn leaf_node_next_leaf(node: *mut c_void) -> *mut u32 {
     node.add(LEAF_NODE_NEXT_LEAF_OFFSET) as *mut u32
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn get_node_max_key(node: *mut c_void) -> u32 {
+unsafe fn get_node_max_key(node: *mut c_void) -> u32 {
     match get_node_type(node) {
         NodeType::NODE_INTERNAL => *internal_node_key(node, *internal_node_num_keys(node) - 1),
         NodeType::NODE_LEAF => *leaf_node_key(node, *leaf_node_num_cells(node) - 1),
@@ -204,8 +203,7 @@ unsafe fn internal_node_find_child(node: *mut c_void, key: u32) -> u32 {
 // Address of right child passed in.
 // Re-initialize root page to contain the new root node.
 // New root node points to two children.
-#[no_mangle]
-pub unsafe extern "C" fn create_new_root(table: &mut Table, right_child_page_num: u32) {
+unsafe fn create_new_root(table: &mut Table, right_child_page_num: u32) {
     let pager = &mut *table.pager;
     let root = get_page(pager, table.root_page_num as usize);
     let right_child = get_page(pager, right_child_page_num as usize);
@@ -228,19 +226,13 @@ pub unsafe extern "C" fn create_new_root(table: &mut Table, right_child_page_num
     *node_parent(right_child) = table.root_page_num;
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn update_internal_node_key(node: *mut c_void, old_key: u32, new_key: u32) {
+unsafe fn update_internal_node_key(node: *mut c_void, old_key: u32, new_key: u32) {
     let old_child_index = internal_node_find_child(node, old_key);
     *internal_node_key(node, old_child_index) = new_key;
 }
 
 /// Add a child/key pair to parent that corresponds to child.
-#[no_mangle]
-pub unsafe extern "C" fn internal_node_insert(
-    table: &mut Table,
-    parent_page_num: u32,
-    child_page_num: u32,
-) {
+unsafe fn internal_node_insert(table: &mut Table, parent_page_num: u32, child_page_num: u32) {
     let pager = &mut *table.pager;
     let parent = get_page(pager, parent_page_num as usize);
     let child = get_page(pager, child_page_num as usize);
@@ -324,5 +316,69 @@ pub unsafe extern "C" fn internal_node_find(
     match get_node_type(child) {
         NodeType::NODE_LEAF => leaf_node_find(table, child_num, key),
         NodeType::NODE_INTERNAL => internal_node_find(table, child_num, key),
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row) {
+    // Create a new node and move half the cells over.
+    // Insert the new value in one of the two nodes.
+    // Update parent or create a new parent.
+    let table = &mut *cursor.table;
+    let pager = &mut *table.pager;
+    let old_node = get_page(pager, cursor.page_num as usize);
+    let old_max = get_node_max_key(old_node);
+    let new_page_num = get_unused_page_num(pager);
+    let new_node = get_page(pager, new_page_num as usize);
+    initialize_leaf_node(new_node);
+    *node_parent(new_node) = *node_parent(old_node);
+    *leaf_node_next_leaf(new_node) = *leaf_node_next_leaf(old_node);
+    *leaf_node_next_leaf(old_node) = new_page_num;
+
+    // All existing keys plus new key should be divided
+    // evenly between old (left) and new (right) nodes.
+    // Starting from the right, move each key to correct position.
+    for i in (0..=LEAF_NODE_MAX_CELLS as i32).rev() {
+        let destination_node = if i >= LEAF_NODE_LEFT_SPLIT_COUNT as i32 {
+            new_node
+        } else {
+            old_node
+        };
+        let index_within_node = i % LEAF_NODE_LEFT_SPLIT_COUNT as i32;
+        let destination = leaf_node_cell(destination_node, index_within_node as u32);
+
+        if i == cursor.cell_num as i32 {
+            serialize_row(
+                value,
+                leaf_node_value(destination_node, index_within_node as u32),
+            );
+            *leaf_node_key(destination_node, index_within_node as u32) = key;
+        } else if i > cursor.cell_num as i32 {
+            memcpy(
+                destination,
+                leaf_node_cell(old_node, (i - 1) as u32),
+                LEAF_NODE_CELL_SIZE,
+            );
+        } else {
+            memcpy(
+                destination,
+                leaf_node_cell(old_node, i as u32),
+                LEAF_NODE_CELL_SIZE,
+            );
+        }
+    }
+
+    // Update cell count on both leaf nodes
+    *leaf_node_num_cells(old_node) = LEAF_NODE_LEFT_SPLIT_COUNT as u32;
+    *leaf_node_num_cells(new_node) = LEAF_NODE_RIGHT_SPLIT_COUNT as u32;
+
+    if is_node_root(old_node) {
+        create_new_root(&mut *cursor.table, new_page_num);
+    } else {
+        let parent_page_num = *node_parent(old_node);
+        let new_max = get_node_max_key(old_node);
+        let parent = get_page(&mut *(&mut *cursor.table).pager, parent_page_num as usize);
+        update_internal_node_key(parent, old_max, new_max);
+        internal_node_insert(&mut *cursor.table, parent_page_num, new_page_num);
     }
 }
