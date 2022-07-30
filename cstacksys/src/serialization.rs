@@ -18,8 +18,7 @@ pub struct Row {
     pub email: [c_char; EMAIL_SIZE],
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn serialize_row(source: &Row, destination: *mut c_void) {
+pub(crate) unsafe fn serialize_row(source: &Row, destination: *mut c_void) {
     memcpy(
         destination.add(ID_OFFSET),
         &source.id as *const u32 as *const c_void,

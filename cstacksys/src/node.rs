@@ -143,8 +143,7 @@ pub unsafe extern "C" fn leaf_node_num_cells(node: *mut c_void) -> *mut u32 {
     node.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn leaf_node_cell(node: *mut c_void, cell_num: u32) -> *mut c_void {
+unsafe fn leaf_node_cell(node: *mut c_void, cell_num: u32) -> *mut c_void {
     node.add(LEAF_NODE_HEADER_SIZE + cell_num as usize * LEAF_NODE_CELL_SIZE)
 }
 
@@ -153,8 +152,7 @@ pub unsafe extern "C" fn leaf_node_key(node: *mut c_void, cell_num: u32) -> *mut
     leaf_node_cell(node, cell_num) as *mut u32
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn leaf_node_value(node: *mut c_void, cell_num: u32) -> *mut c_void {
+pub(crate) unsafe fn leaf_node_value(node: *mut c_void, cell_num: u32) -> *mut c_void {
     leaf_node_cell(node, cell_num).add(LEAF_NODE_KEY_SIZE)
 }
 
@@ -319,8 +317,7 @@ pub unsafe extern "C" fn internal_node_find(
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row) {
+unsafe fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row) {
     // Create a new node and move half the cells over.
     // Insert the new value in one of the two nodes.
     // Update parent or create a new parent.
@@ -381,4 +378,31 @@ pub unsafe extern "C" fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u3
         update_internal_node_key(parent, old_max, new_max);
         internal_node_insert(&mut *cursor.table, parent_page_num, new_page_num);
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn leaf_node_insert(cursor: &mut Cursor, key: u32, value: &Row) {
+    let node = get_page(&mut *(&mut *cursor.table).pager, cursor.page_num as usize);
+
+    let num_cells = *leaf_node_num_cells(node);
+    if num_cells >= LEAF_NODE_MAX_CELLS as u32 {
+        // Node full
+        leaf_node_split_and_insert(cursor, key, value);
+        return;
+    }
+
+    if cursor.cell_num < num_cells {
+        // Make room for new cell
+        for i in (cursor.cell_num + 1..=num_cells).rev() {
+            memcpy(
+                leaf_node_cell(node, i),
+                leaf_node_cell(node, i - 1),
+                LEAF_NODE_CELL_SIZE,
+            );
+        }
+    }
+
+    *leaf_node_num_cells(node) += 1;
+    *leaf_node_key(node, cursor.cell_num) = key;
+    serialize_row(value, leaf_node_value(node, cursor.cell_num));
 }
