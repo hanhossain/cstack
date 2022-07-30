@@ -21,8 +21,7 @@ pub(crate) fn get_unused_page_num(pager: &Pager) -> u32 {
     pager.num_pages
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn get_page(pager: &mut Pager, page_num: usize) -> *mut c_void {
+pub(crate) unsafe fn get_page(pager: &mut Pager, page_num: usize) -> *mut c_void {
     if page_num > TABLE_MAX_PAGES {
         println!("Tried to fetch page number out of bounds. {page_num} > {TABLE_MAX_PAGES}");
         exit(EXIT_FAILURE);
@@ -86,8 +85,7 @@ pub(crate) unsafe fn pager_flush(pager: &mut Pager, page_num: usize) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn pager_open(filename: *const c_char) -> Box<Pager> {
+pub(crate) unsafe fn pager_open(filename: *const c_char) -> Box<Pager> {
     let fd = open(filename, O_RDWR | O_CREAT);
     if fd == -1 {
         println!("Unable to open file");

@@ -8,23 +8,6 @@ void callback_printf(const char *string) {
     fflush(stdout);
 }
 
-Table *db_open(const char *filename) {
-    Pager *pager = pager_open(filename);
-
-    Table *table = (Table *)malloc(sizeof(Table));
-    table->pager = pager;
-    table->root_page_num = 0;
-
-    if (pager->num_pages == 0) {
-        // New database file. Initialize page 0 as leaf node.
-        void *root_node = get_page(pager, 0);
-        initialize_leaf_node(root_node);
-        set_node_root(root_node, true);
-    }
-
-    return table;
-}
-
 int main(int argc, char *argv[]) {
     if (argc < 2) {
         printf("Must supply a database filename.\n");

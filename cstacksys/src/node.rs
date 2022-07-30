@@ -91,8 +91,7 @@ fn is_node_root(node: *const c_void) -> bool {
     value != 0
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn set_node_root(node: *mut c_void, is_root: bool) {
+pub(crate) unsafe fn set_node_root(node: *mut c_void, is_root: bool) {
     let value = if is_root { 1 } else { 0 };
     *(node.add(IS_ROOT_OFFSET) as *mut u8) = value;
 }
@@ -164,8 +163,7 @@ unsafe fn get_node_max_key(node: *mut c_void) -> u32 {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn initialize_leaf_node(node: *mut c_void) {
+pub(crate) unsafe fn initialize_leaf_node(node: *mut c_void) {
     set_node_type(node, NodeType::NODE_LEAF);
     set_node_root(node, false);
     *leaf_node_num_cells(node) = 0;

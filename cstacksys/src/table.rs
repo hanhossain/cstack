@@ -1,9 +1,9 @@
 use crate::node::{
-    get_node_type, internal_node_find, leaf_node_find, leaf_node_next_leaf, leaf_node_num_cells,
-    leaf_node_value, NodeType,
+    get_node_type, initialize_leaf_node, internal_node_find, leaf_node_find, leaf_node_next_leaf,
+    leaf_node_num_cells, leaf_node_value, set_node_root, NodeType,
 };
-use crate::pager::{get_page, pager_flush, Pager, TABLE_MAX_PAGES};
-use libc::{c_void, close, exit, free, EXIT_FAILURE};
+use crate::pager::{get_page, pager_flush, pager_open, Pager, TABLE_MAX_PAGES};
+use libc::{c_char, c_void, close, exit, free, EXIT_FAILURE};
 use std::ptr::null_mut;
 
 #[repr(C)]
@@ -70,7 +70,7 @@ pub(crate) unsafe fn db_close(table: &mut Table) {
         }
     }
     let _ = Box::from_raw(table.pager);
-    free(table as *mut Table as *mut c_void);
+    let _ = Box::from_raw(table as *mut Table);
 }
 
 /// Return the position of the given key.
@@ -93,4 +93,21 @@ pub(crate) unsafe fn table_start(table: &mut Table) -> *mut Cursor {
     let num_cells = *leaf_node_num_cells(node);
     cursor.end_of_table = num_cells == 0;
     cursor_ptr
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn db_open(filename: *const c_char) -> Box<Table> {
+    let mut pager = pager_open(filename);
+
+    if pager.num_pages == 0 {
+        // New database file. Initialize page 0 as leaf node.
+        let root_node = get_page(&mut pager, 0);
+        initialize_leaf_node(root_node);
+        set_node_root(root_node, true);
+    }
+
+    Box::new(Table {
+        pager: Box::into_raw(pager),
+        root_page_num: 0,
+    })
 }
