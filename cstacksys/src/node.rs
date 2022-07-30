@@ -1,7 +1,7 @@
 #![allow(non_camel_case_types)]
 use crate::pager::{get_page, get_unused_page_num, PAGE_SIZE};
 use crate::serialization::ROW_SIZE;
-use crate::table::Table;
+use crate::table::{Cursor, Table};
 use libc::{exit, memcpy, EXIT_FAILURE};
 use std::ffi::c_void;
 use std::mem::size_of;
@@ -279,4 +279,36 @@ pub unsafe extern "C" fn internal_node_insert(
         *internal_node_child(parent, index) = child_page_num;
         *internal_node_key(parent, index) = child_max_key;
     }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) -> *mut Cursor {
+    let node = get_page(&mut *table.pager, page_num as usize);
+    let num_cells = *leaf_node_num_cells(node);
+
+    let mut cursor = Box::new(Cursor {
+        table: table as *mut Table,
+        page_num,
+        cell_num: 0,
+        end_of_table: false,
+    });
+
+    // Binary search
+    let mut min_index = 0;
+    let mut one_past_max_index = num_cells;
+    while one_past_max_index != min_index {
+        let index = (min_index + one_past_max_index) / 2;
+        let key_at_index = *leaf_node_key(node, index);
+        if key == key_at_index {
+            cursor.cell_num = index;
+            return Box::into_raw(cursor);
+        } else if key < key_at_index {
+            one_past_max_index = index;
+        } else {
+            min_index = index + 1;
+        }
+    }
+
+    cursor.cell_num = min_index;
+    Box::into_raw(cursor)
 }
