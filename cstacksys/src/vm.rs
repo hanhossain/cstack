@@ -1,8 +1,10 @@
 #![allow(non_camel_case_types)]
 
+use crate::node::{leaf_node_insert, leaf_node_key, leaf_node_num_cells};
+use crate::pager::get_page;
 use crate::repl::{print_constants, print_tree, InputBuffer};
 use crate::serialization::{Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE};
-use crate::table::{db_close, Table};
+use crate::table::{db_close, table_find, Table};
 use libc::{exit, strcpy, EXIT_SUCCESS};
 use std::ffi::{CStr, CString};
 use std::str::FromStr;
@@ -115,4 +117,30 @@ pub unsafe extern "C" fn do_meta_command(
         }
         _ => MetaCommandResult::META_COMMAND_UNRECOGNIZED_COMMAND,
     }
+}
+
+#[repr(C)]
+pub enum ExecuteResult {
+    EXECUTE_SUCCESS,
+    EXECUTE_DUPLICATE_KEY,
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn execute_insert(statement: &Statement, table: &mut Table) -> ExecuteResult {
+    let node = get_page(&mut *table.pager, table.root_page_num as usize);
+    let num_cells = *leaf_node_num_cells(node);
+
+    let row_to_insert = &statement.row_to_insert;
+    let key_to_insert = row_to_insert.id;
+    let cursor = &mut *table_find(table, key_to_insert);
+
+    if cursor.cell_num < num_cells {
+        let key_at_index = *leaf_node_key(node, cursor.cell_num);
+        if key_at_index == key_to_insert {
+            return ExecuteResult::EXECUTE_DUPLICATE_KEY;
+        }
+    }
+
+    leaf_node_insert(cursor, row_to_insert.id, row_to_insert);
+    ExecuteResult::EXECUTE_SUCCESS
 }

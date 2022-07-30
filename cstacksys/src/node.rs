@@ -137,8 +137,7 @@ pub(crate) unsafe fn internal_node_key(node: *mut c_void, key_num: u32) -> *mut 
     internal_node_cell(node, key_num).add(INTERNAL_NODE_CHILD_SIZE)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn leaf_node_num_cells(node: *mut c_void) -> *mut u32 {
+pub(crate) unsafe fn leaf_node_num_cells(node: *mut c_void) -> *mut u32 {
     node.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32
 }
 
@@ -146,8 +145,7 @@ unsafe fn leaf_node_cell(node: *mut c_void, cell_num: u32) -> *mut c_void {
     node.add(LEAF_NODE_HEADER_SIZE + cell_num as usize * LEAF_NODE_CELL_SIZE)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn leaf_node_key(node: *mut c_void, cell_num: u32) -> *mut u32 {
+pub(crate) unsafe fn leaf_node_key(node: *mut c_void, cell_num: u32) -> *mut u32 {
     leaf_node_cell(node, cell_num) as *mut u32
 }
 
@@ -373,8 +371,7 @@ unsafe fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row)
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn leaf_node_insert(cursor: &mut Cursor, key: u32, value: &Row) {
+pub(crate) unsafe fn leaf_node_insert(cursor: &mut Cursor, key: u32, value: &Row) {
     let node = get_page(&mut *(&mut *cursor.table).pager, cursor.page_num as usize);
 
     let num_cells = *leaf_node_num_cells(node);
