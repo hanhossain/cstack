@@ -23,8 +23,8 @@ pub extern "C" fn print_prompt() {
 
 #[repr(C)]
 pub struct InputBuffer {
-    buffer: *mut c_char,
-    input_length: usize,
+    pub buffer: *mut c_char,
+    pub input_length: usize,
 }
 
 #[no_mangle]

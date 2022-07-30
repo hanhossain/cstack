@@ -3,6 +3,7 @@ mod pager;
 mod repl;
 mod serialization;
 mod table;
+mod vm;
 
 #[no_mangle]
 pub extern "C" fn hello_world() {
