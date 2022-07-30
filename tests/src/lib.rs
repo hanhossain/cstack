@@ -144,6 +144,18 @@ mod tests {
     }
 
     #[test]
+    fn open_and_close_sanity_check() {
+        let db = Database::new();
+        let output = db.run_script(vec![".exit"]);
+        let expected = vec!["db > "];
+        assert_eq!(output, expected);
+
+        let output = db.run_script(vec!["select", ".exit"]);
+        let expected = vec!["db > Executed.", "db > "];
+        assert_eq!(output, expected);
+    }
+
+    #[test]
     fn prints_constants() {
         let db = Database::new();
         let output = db.run_script(vec![".constants", ".exit"]);
