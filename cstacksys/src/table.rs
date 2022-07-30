@@ -88,3 +88,13 @@ pub unsafe extern "C" fn table_find(table: &mut Table, key: u32) -> *mut Cursor 
         NodeType::NODE_LEAF => leaf_node_find(table, root_page_num, key),
     }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn table_start(table: &mut Table) -> *mut Cursor {
+    let cursor_ptr = table_find(table, 0);
+    let cursor = &mut *cursor_ptr;
+    let node = get_page(&mut *table.pager, cursor.page_num as usize);
+    let num_cells = *leaf_node_num_cells(node);
+    cursor.end_of_table = num_cells == 0;
+    cursor_ptr
+}

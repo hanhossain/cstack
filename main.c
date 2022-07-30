@@ -37,15 +37,6 @@ ExecuteResult execute_insert(const Statement *statement, Table *table) {
     return EXECUTE_SUCCESS;
 }
 
-Cursor *table_start(Table *table) {
-    Cursor *cursor = table_find(table, 0);
-    void *node = get_page(table->pager, cursor->page_num);
-    uint32_t num_cells = *leaf_node_num_cells(node);
-    cursor->end_of_table = (num_cells == 0);
-
-    return cursor;
-}
-
 ExecuteResult execute_select(const Statement *statement, Table *table) {
     Cursor *cursor = table_start(table);
 
