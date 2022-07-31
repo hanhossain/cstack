@@ -1,4 +1,4 @@
-use cstack::repl::{new_input_buffer, print_prompt, read_input};
+use cstack::repl::{print_prompt, read_input, InputBuffer};
 use cstack::serialization::Row;
 use cstack::table::db_open;
 use cstack::vm::{
@@ -16,7 +16,7 @@ fn main() {
         let filename = filename_owned.as_ptr();
         let mut table = db_open(filename);
 
-        let mut input_buffer = new_input_buffer();
+        let mut input_buffer = InputBuffer::new();
 
         loop {
             print_prompt();

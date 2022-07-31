@@ -11,28 +11,26 @@ use std::ffi::CString;
 use std::io::{BufRead, Write};
 use std::ptr::null_mut;
 
-#[no_mangle]
-pub extern "C" fn print_prompt() {
-    std::io::stdout().write_all(b"db > ").unwrap();
+pub fn print_prompt() {
+    print!("db > ");
     std::io::stdout().flush().unwrap();
 }
 
-#[repr(C)]
 pub struct InputBuffer {
     pub buffer: *mut c_char,
     pub input_length: usize,
 }
 
-#[no_mangle]
-pub extern "C" fn new_input_buffer() -> Box<InputBuffer> {
-    Box::new(InputBuffer {
-        buffer: null_mut(),
-        input_length: 0,
-    })
+impl InputBuffer {
+    pub fn new() -> Box<InputBuffer> {
+        Box::new(InputBuffer {
+            buffer: null_mut(),
+            input_length: 0,
+        })
+    }
 }
 
-#[no_mangle]
-pub extern "C" fn read_input(input_buffer: &mut InputBuffer) {
+pub fn read_input(input_buffer: &mut InputBuffer) {
     let mut buffer = if input_buffer.buffer.is_null() {
         String::new()
     } else {
@@ -58,7 +56,7 @@ pub extern "C" fn read_input(input_buffer: &mut InputBuffer) {
     input_buffer.input_length = bytes_read;
 }
 
-pub(crate) fn print_constants() {
+pub fn print_constants() {
     println!("ROW_SIZE: {}", ROW_SIZE);
     println!("COMMON_NODE_HEADER_SIZE: {}", COMMON_NODE_HEADER_SIZE);
     println!("LEAF_NODE_HEADER_SIZE: {}", LEAF_NODE_HEADER_SIZE);
@@ -67,7 +65,7 @@ pub(crate) fn print_constants() {
     println!("LEAF_NODE_MAX_CELLS: {}", LEAF_NODE_MAX_CELLS);
 }
 
-pub(crate) unsafe fn print_tree(pager: &mut Pager, page_num: u32, indentation_level: u32) {
+pub unsafe fn print_tree(pager: &mut Pager, page_num: u32, indentation_level: u32) {
     let node = get_page(pager, page_num as usize);
 
     match get_node_type(node) {
