@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
     char* filename = argv[1];
     Table *table = db_open(filename);
 
-    InputBuffer* input_buffer = new_input_buffer();
+    InputBuffer *input_buffer = new_input_buffer();
     while (true) {
         print_prompt();
         read_input(input_buffer);

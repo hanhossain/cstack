@@ -28,12 +28,11 @@ pub struct InputBuffer {
 }
 
 #[no_mangle]
-pub extern "C" fn new_input_buffer() -> *mut InputBuffer {
-    let input_buffer = Box::new(InputBuffer {
+pub extern "C" fn new_input_buffer() -> Box<InputBuffer> {
+    Box::new(InputBuffer {
         buffer: null_mut(),
         input_length: 0,
-    });
-    Box::into_raw(input_buffer)
+    })
 }
 
 #[no_mangle]
