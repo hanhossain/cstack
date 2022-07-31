@@ -2,13 +2,13 @@
 
 use crate::node::{leaf_node_insert, leaf_node_key, leaf_node_num_cells};
 use crate::pager::get_page;
-use crate::repl::{print_constants, print_tree, InputBuffer};
+use crate::repl::{print_constants, print_tree};
 use crate::serialization::{
     deserialize_row, print_row, Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE,
 };
 use crate::table::Table;
 use libc::{exit, strcpy, EXIT_SUCCESS};
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 use std::str::FromStr;
 
 pub enum StatementType {
@@ -29,14 +29,10 @@ pub enum PrepareResult {
     PREPARE_UNRECOGNIZED_STATEMENT,
 }
 
-pub unsafe fn prepare_statement(
-    input_buffer: &mut InputBuffer,
-    statement: &mut Statement,
-) -> PrepareResult {
-    let string = CStr::from_ptr(input_buffer.buffer).to_str().unwrap();
-    if &string[..6] == "insert" {
-        prepare_insert(input_buffer, statement)
-    } else if string == "select" {
+pub unsafe fn prepare_statement(input: &mut String, statement: &mut Statement) -> PrepareResult {
+    if &input[..6] == "insert" {
+        prepare_insert(input, statement)
+    } else if input == "select" {
         statement.r#type = StatementType::STATEMENT_SELECT;
         PrepareResult::PREPARE_SUCCESS
     } else {
@@ -45,15 +41,9 @@ pub unsafe fn prepare_statement(
 }
 
 #[allow(temporary_cstring_as_ptr)]
-unsafe fn prepare_insert(
-    input_buffer: &mut InputBuffer,
-    statement: &mut Statement,
-) -> PrepareResult {
+unsafe fn prepare_insert(input: &mut String, statement: &mut Statement) -> PrepareResult {
     statement.r#type = StatementType::STATEMENT_INSERT;
-    let mut splitter = CStr::from_ptr(input_buffer.buffer)
-        .to_str()
-        .unwrap()
-        .split(" ");
+    let mut splitter = input.split(" ");
     let _keyword = splitter.next();
     let id_string = splitter.next();
     let username = splitter.next();
@@ -91,8 +81,7 @@ pub enum MetaCommandResult {
     META_COMMAND_UNRECOGNIZED_COMMAND,
 }
 
-pub unsafe fn do_meta_command(input_buffer: &InputBuffer, table: &mut Table) -> MetaCommandResult {
-    let query = CStr::from_ptr(input_buffer.buffer).to_str().unwrap();
+pub unsafe fn do_meta_command(query: &str, table: &mut Table) -> MetaCommandResult {
     match query {
         ".exit" => {
             table.close();

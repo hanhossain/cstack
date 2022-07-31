@@ -1,11 +1,11 @@
-use cstack::repl::{print_prompt, read_input, InputBuffer};
+use cstack::repl::{print_prompt, read_input};
 use cstack::serialization::Row;
 use cstack::table::Table;
 use cstack::vm::{
     do_meta_command, execute_statement, prepare_statement, ExecuteResult, MetaCommandResult,
     PrepareResult, Statement, StatementType,
 };
-use std::ffi::{CStr, CString};
+use std::ffi::CString;
 
 fn main() {
     let mut args = std::env::args();
@@ -16,22 +16,15 @@ fn main() {
         let filename = filename_owned.as_ptr();
         let mut table = Table::open(filename);
 
-        let mut input_buffer = InputBuffer::new();
-
         loop {
             print_prompt();
-            read_input(&mut input_buffer);
+            let mut input = read_input();
 
-            let meta_owned = CString::new(".").unwrap();
-            let meta = meta_owned.as_ptr();
-            if *input_buffer.buffer == *meta {
-                match do_meta_command(&input_buffer, &mut table) {
+            if input.starts_with(".") {
+                match do_meta_command(&input, &mut table) {
                     MetaCommandResult::META_COMMAND_SUCCESS => continue,
                     MetaCommandResult::META_COMMAND_UNRECOGNIZED_COMMAND => {
-                        println!(
-                            "Unrecognized command '{}'",
-                            CStr::from_ptr(input_buffer.buffer).to_str().unwrap()
-                        );
+                        println!("Unrecognized command '{}'", input);
                         continue;
                     }
                 }
@@ -42,7 +35,7 @@ fn main() {
                 row_to_insert: Row::new(),
             };
 
-            match prepare_statement(&mut input_buffer, &mut statement) {
+            match prepare_statement(&mut input, &mut statement) {
                 PrepareResult::PREPARE_SUCCESS => (),
                 PrepareResult::PREPARE_NEGATIVE_ID => {
                     println!("ID must be positive.");
@@ -57,10 +50,7 @@ fn main() {
                     continue;
                 }
                 PrepareResult::PREPARE_UNRECOGNIZED_STATEMENT => {
-                    println!(
-                        "Unrecognized keyword at start of '{}'.",
-                        CStr::from_ptr(input_buffer.buffer).to_str().unwrap()
-                    );
+                    println!("Unrecognized keyword at start of '{}'.", input);
                     continue;
                 }
             }

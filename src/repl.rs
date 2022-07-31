@@ -6,54 +6,18 @@ use crate::node::{
 };
 use crate::pager::{get_page, Pager};
 use crate::serialization::ROW_SIZE;
-use libc::{c_char, exit, EXIT_FAILURE};
-use std::ffi::CString;
 use std::io::{BufRead, Write};
-use std::ptr::null_mut;
 
 pub fn print_prompt() {
     print!("db > ");
     std::io::stdout().flush().unwrap();
 }
 
-pub struct InputBuffer {
-    pub buffer: *mut c_char,
-    pub input_length: usize,
-}
-
-impl InputBuffer {
-    pub fn new() -> InputBuffer {
-        InputBuffer {
-            buffer: null_mut(),
-            input_length: 0,
-        }
-    }
-}
-
-pub fn read_input(input_buffer: &mut InputBuffer) {
-    let mut buffer = if input_buffer.buffer.is_null() {
-        String::new()
-    } else {
-        // convert any existing buffer into a String and clear it
-        let cstring = unsafe { CString::from_raw(input_buffer.buffer) };
-        input_buffer.buffer = null_mut();
-        let mut string = cstring.into_string().expect("should have valid utf-8");
-        string.clear();
-        string
-    };
-
+pub fn read_input() -> String {
+    let mut input = String::new();
     let mut stdin = std::io::stdin().lock();
-    let bytes_read = match stdin.read_line(&mut buffer) {
-        Ok(n) => n,
-        Err(_) => {
-            println!("Error reading input");
-            unsafe { exit(EXIT_FAILURE) };
-        }
-    };
-
-    let cstring = CString::new(buffer.trim_end()).expect("found a null terminated string");
-    input_buffer.buffer = cstring.into_raw();
-    input_buffer.input_length = bytes_read;
+    stdin.read_line(&mut input).expect("Error reading input");
+    input.trim_end().to_string()
 }
 
 pub fn print_constants() {
