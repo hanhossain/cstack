@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "cstacksys"
+name = "cstack"
 version = "0.1.0"
 dependencies = [
  "libc",

@@ -1,7 +1,7 @@
-use cstacksys::repl::{new_input_buffer, print_prompt, read_input};
-use cstacksys::serialization::Row;
-use cstacksys::table::db_open;
-use cstacksys::vm::{
+use cstack::repl::{new_input_buffer, print_prompt, read_input};
+use cstack::serialization::Row;
+use cstack::table::db_open;
+use cstack::vm::{
     do_meta_command, execute_statement, prepare_statement, ExecuteResult, MetaCommandResult,
     PrepareResult, Statement, StatementType,
 };
