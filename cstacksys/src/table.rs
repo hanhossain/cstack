@@ -12,8 +12,7 @@ pub struct Table {
     pub root_page_num: u32,
 }
 
-#[repr(C)]
-pub struct Cursor {
+pub(crate) struct Cursor {
     pub table: *mut Table,
     pub page_num: u32,
     pub cell_num: u32,
@@ -21,25 +20,27 @@ pub struct Cursor {
     pub end_of_table: bool,
 }
 
-pub(crate) unsafe fn cursor_value(cursor: &mut Cursor) -> *mut c_void {
-    let page = get_page(&mut (&mut *cursor.table).pager, cursor.page_num as usize);
-    leaf_node_value(page, cursor.cell_num)
-}
+impl Cursor {
+    pub(crate) unsafe fn value(&mut self) -> *mut c_void {
+        let page = get_page(&mut (*self.table).pager, self.page_num as usize);
+        leaf_node_value(page, self.cell_num)
+    }
 
-pub(crate) unsafe fn cursor_advance(cursor: &mut Cursor) {
-    let page_num = cursor.page_num;
-    let node = get_page(&mut (&mut *cursor.table).pager, page_num as usize);
+    pub(crate) unsafe fn advance(&mut self) {
+        let page_num = self.page_num;
+        let node = get_page(&mut (&mut *self.table).pager, page_num as usize);
 
-    cursor.cell_num += 1;
-    if cursor.cell_num >= *leaf_node_num_cells(node) {
-        // Advance to next leaf node
-        let next_page_num = *leaf_node_next_leaf(node);
-        if next_page_num == 0 {
-            // This was the rightmost leaf
-            cursor.end_of_table = true;
-        } else {
-            cursor.page_num = next_page_num;
-            cursor.cell_num = 0;
+        self.cell_num += 1;
+        if self.cell_num >= *leaf_node_num_cells(node) {
+            // Advance to next leaf node
+            let next_page_num = *leaf_node_next_leaf(node);
+            if next_page_num == 0 {
+                // This was the rightmost leaf
+                self.end_of_table = true;
+            } else {
+                self.page_num = next_page_num;
+                self.cell_num = 0;
+            }
         }
     }
 }
@@ -88,7 +89,8 @@ pub(crate) unsafe fn table_find(table: &mut Table, key: u32) -> *mut Cursor {
 pub(crate) unsafe fn table_start(table: &mut Table) -> *mut Cursor {
     let cursor_ptr = table_find(table, 0);
     let cursor = &mut *cursor_ptr;
-    let node = get_page(&mut table.pager, cursor.page_num as usize);
+    let page_num = cursor.page_num as usize;
+    let node = get_page(&mut table.pager, page_num);
     let num_cells = *leaf_node_num_cells(node);
     cursor.end_of_table = num_cells == 0;
     cursor_ptr

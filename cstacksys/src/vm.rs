@@ -7,9 +7,7 @@ use crate::serialization::{
     deserialize_row, print_row, Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE, EMAIL_SIZE,
     USERNAME_SIZE,
 };
-use crate::table::{
-    cursor_advance, cursor_value, db_close, table_find, table_start, Cursor, Table,
-};
+use crate::table::{db_close, table_find, table_start, Cursor, Table};
 use libc::{exit, strcpy, EXIT_SUCCESS};
 use std::ffi::{CStr, CString};
 use std::str::FromStr;
@@ -157,9 +155,9 @@ unsafe fn execute_select(_statement: &Statement, table: &mut Table) -> ExecuteRe
             email: [0; EMAIL_SIZE],
             username: [0; USERNAME_SIZE],
         };
-        deserialize_row(cursor_value(cursor), &mut row);
+        deserialize_row(cursor.value(), &mut row);
         print_row(&row);
-        cursor_advance(cursor);
+        cursor.advance();
     }
 
     let _ = Box::from_raw(cursor as *mut Cursor);

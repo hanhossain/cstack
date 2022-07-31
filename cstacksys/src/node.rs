@@ -269,7 +269,7 @@ pub(crate) unsafe fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) 
     let num_cells = *leaf_node_num_cells(node);
 
     let mut cursor = Box::new(Cursor {
-        table: table as *mut Table,
+        table,
         page_num,
         cell_num: 0,
         end_of_table: false,
