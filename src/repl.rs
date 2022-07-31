@@ -4,7 +4,7 @@ use crate::node::{
     COMMON_NODE_HEADER_SIZE, LEAF_NODE_CELL_SIZE, LEAF_NODE_HEADER_SIZE, LEAF_NODE_MAX_CELLS,
     LEAF_NODE_SPACE_FOR_CELLS,
 };
-use crate::pager::{get_page, Pager};
+use crate::pager::Pager;
 use crate::serialization::ROW_SIZE;
 use std::io::{BufRead, Write};
 
@@ -30,7 +30,7 @@ pub fn print_constants() {
 }
 
 pub unsafe fn print_tree(pager: &mut Pager, page_num: u32, indentation_level: u32) {
-    let node = get_page(pager, page_num as usize);
+    let node = pager.get_page(page_num as usize);
 
     match get_node_type(node) {
         NodeType::Leaf => {

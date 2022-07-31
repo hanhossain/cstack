@@ -2,7 +2,7 @@ use crate::node::{
     get_node_type, initialize_leaf_node, internal_node_find, leaf_node_find, leaf_node_next_leaf,
     leaf_node_num_cells, leaf_node_value, set_node_root, NodeType,
 };
-use crate::pager::{get_page, pager_flush, pager_open, Pager, TABLE_MAX_PAGES};
+use crate::pager::{Pager, TABLE_MAX_PAGES};
 use libc::{c_void, close, exit, free, EXIT_FAILURE};
 use std::ptr::null_mut;
 
@@ -17,7 +17,7 @@ impl Table {
     /// where it should be inserted.
     pub unsafe fn find(&mut self, key: u32) -> Cursor {
         let root_page_num = self.root_page_num;
-        let root_node = get_page(&mut self.pager, root_page_num as usize);
+        let root_node = self.pager.get_page(root_page_num as usize);
 
         match get_node_type(root_node) {
             NodeType::Internal => internal_node_find(self, root_page_num, key),
@@ -28,7 +28,7 @@ impl Table {
     pub unsafe fn start(&mut self) -> Cursor {
         let mut cursor = self.find(0);
         let page_num = cursor.page_num as usize;
-        let node = get_page(&mut self.pager, page_num);
+        let node = self.pager.get_page(page_num);
         let num_cells = *leaf_node_num_cells(node);
         cursor.end_of_table = num_cells == 0;
         cursor
@@ -36,10 +36,10 @@ impl Table {
 
     pub fn open(filename: &str) -> Table {
         let pager = unsafe {
-            let mut pager = pager_open(filename);
+            let mut pager = Pager::open(filename);
             if pager.num_pages == 0 {
                 // New database file. Initialize page 0 as leaf node.
-                let root_node = get_page(&mut pager, 0);
+                let root_node = pager.get_page(0);
                 initialize_leaf_node(root_node);
                 set_node_root(root_node, true);
             }
@@ -59,7 +59,7 @@ impl Table {
             if pager.pages[i as usize].is_null() {
                 continue;
             }
-            pager_flush(pager, i);
+            pager.flush(i);
             free(pager.pages[i]);
             pager.pages[i] = null_mut();
         }
@@ -90,13 +90,13 @@ pub struct Cursor {
 
 impl Cursor {
     pub unsafe fn value(&mut self) -> *mut c_void {
-        let page = get_page(&mut (*self.table).pager, self.page_num as usize);
+        let page = (*self.table).pager.get_page(self.page_num as usize);
         leaf_node_value(page, self.cell_num)
     }
 
     pub unsafe fn advance(&mut self) {
         let page_num = self.page_num;
-        let node = get_page(&mut (&mut *self.table).pager, page_num as usize);
+        let node = (&mut *self.table).pager.get_page(page_num as usize);
 
         self.cell_num += 1;
         if self.cell_num >= *leaf_node_num_cells(node) {

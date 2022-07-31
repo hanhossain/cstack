@@ -1,5 +1,4 @@
 use crate::node::{leaf_node_insert, leaf_node_key, leaf_node_num_cells};
-use crate::pager::get_page;
 use crate::repl::{print_constants, print_tree};
 use crate::serialization::{
     deserialize_row, print_row, Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE,
@@ -108,7 +107,7 @@ pub enum ExecuteError {
 }
 
 unsafe fn execute_insert(statement: &Statement, table: &mut Table) -> Result<(), ExecuteError> {
-    let node = get_page(&mut table.pager, table.root_page_num as usize);
+    let node = table.pager.get_page(table.root_page_num as usize);
     let num_cells = *leaf_node_num_cells(node);
 
     let row_to_insert = &statement.row_to_insert;
