@@ -8,9 +8,10 @@ use cstack::vm::{
 use std::ffi::CString;
 
 fn main() {
-    let mut args = std::env::args();
-    let _ = args.next();
-    let filename = args.next().expect("Must supply a database filename");
+    let filename = std::env::args()
+        .skip(1)
+        .next()
+        .expect("Must supply a database filename");
     unsafe {
         let filename_owned = CString::new(filename).unwrap();
         let filename = filename_owned.as_ptr();
