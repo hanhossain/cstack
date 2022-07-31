@@ -25,6 +25,12 @@ impl Row {
             username: [0; USERNAME_SIZE],
         }
     }
+
+    pub unsafe fn print_row(&self) {
+        let username = ptr_to_str(&self.username);
+        let email = ptr_to_str(&self.email);
+        println!("({}, {}, {})", self.id, username, email);
+    }
 }
 
 pub(crate) unsafe fn serialize_row(source: &Row, destination: *mut c_void) {
@@ -65,12 +71,6 @@ pub(crate) unsafe fn deserialize_row(source: *const c_void, destination: &mut Ro
         source.add(EMAIL_OFFSET),
         EMAIL_SIZE,
     );
-}
-
-pub(crate) unsafe fn print_row(row: &Row) {
-    let username = ptr_to_str(&row.username);
-    let email = ptr_to_str(&row.email);
-    println!("({}, {}, {})", row.id, username, email);
 }
 
 unsafe fn ptr_to_str(value: &[c_char]) -> &str {

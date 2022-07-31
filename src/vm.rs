@@ -1,8 +1,6 @@
 use crate::node::{leaf_node_insert, leaf_node_key, leaf_node_num_cells};
 use crate::repl::{print_constants, print_tree};
-use crate::serialization::{
-    deserialize_row, print_row, Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE,
-};
+use crate::serialization::{deserialize_row, Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE};
 use crate::table::Table;
 use libc::{exit, strcpy, EXIT_SUCCESS};
 use std::ffi::CString;
@@ -130,7 +128,7 @@ unsafe fn execute_select(_statement: &Statement, table: &mut Table) -> Result<()
     while !cursor.end_of_table {
         let mut row = Row::new();
         deserialize_row(cursor.value(), &mut row);
-        print_row(&row);
+        row.print_row();
         cursor.advance();
     }
 
