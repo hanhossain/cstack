@@ -112,7 +112,7 @@ pub unsafe extern "C" fn do_meta_command(
         }
         ".btree" => {
             println!("Tree:");
-            print_tree(&mut *table.pager, 0, 0);
+            print_tree(&mut table.pager, 0, 0);
             MetaCommandResult::META_COMMAND_SUCCESS
         }
         ".constants" => {
@@ -131,7 +131,7 @@ pub enum ExecuteResult {
 }
 
 unsafe fn execute_insert(statement: &Statement, table: &mut Table) -> ExecuteResult {
-    let node = get_page(&mut *table.pager, table.root_page_num as usize);
+    let node = get_page(&mut table.pager, table.root_page_num as usize);
     let num_cells = *leaf_node_num_cells(node);
 
     let row_to_insert = &statement.row_to_insert;

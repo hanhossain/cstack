@@ -85,7 +85,7 @@ pub(crate) unsafe fn pager_flush(pager: &mut Pager, page_num: usize) {
     }
 }
 
-pub(crate) unsafe fn pager_open(filename: *const c_char) -> Box<Pager> {
+pub(crate) unsafe fn pager_open(filename: *const c_char) -> Pager {
     let fd = open(filename, O_RDWR | O_CREAT);
     if fd == -1 {
         println!("Unable to open file");
@@ -98,10 +98,10 @@ pub(crate) unsafe fn pager_open(filename: *const c_char) -> Box<Pager> {
         exit(EXIT_FAILURE);
     }
 
-    Box::new(Pager {
+    Pager {
         file_length: file_length as u32,
         file_descriptor: fd,
         num_pages: file_length as u32 / PAGE_SIZE as u32,
         pages: [null_mut(); TABLE_MAX_PAGES],
-    })
+    }
 }

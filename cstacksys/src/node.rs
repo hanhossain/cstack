@@ -197,7 +197,7 @@ unsafe fn internal_node_find_child(node: *mut c_void, key: u32) -> u32 {
 // Re-initialize root page to contain the new root node.
 // New root node points to two children.
 unsafe fn create_new_root(table: &mut Table, right_child_page_num: u32) {
-    let pager = &mut *table.pager;
+    let pager = &mut table.pager;
     let root = get_page(pager, table.root_page_num as usize);
     let right_child = get_page(pager, right_child_page_num as usize);
     let left_child_page_num = get_unused_page_num(pager);
@@ -226,7 +226,7 @@ unsafe fn update_internal_node_key(node: *mut c_void, old_key: u32, new_key: u32
 
 /// Add a child/key pair to parent that corresponds to child.
 unsafe fn internal_node_insert(table: &mut Table, parent_page_num: u32, child_page_num: u32) {
-    let pager = &mut *table.pager;
+    let pager = &mut table.pager;
     let parent = get_page(pager, parent_page_num as usize);
     let child = get_page(pager, child_page_num as usize);
     let child_max_key = get_node_max_key(child);
@@ -241,7 +241,7 @@ unsafe fn internal_node_insert(table: &mut Table, parent_page_num: u32, child_pa
     }
 
     let right_child_page_num = *internal_node_right_child(parent);
-    let right_child = get_page(&mut *table.pager, right_child_page_num as usize);
+    let right_child = get_page(pager, right_child_page_num as usize);
 
     if child_max_key > get_node_max_key(right_child) {
         // Replace right child
@@ -265,7 +265,7 @@ unsafe fn internal_node_insert(table: &mut Table, parent_page_num: u32, child_pa
 }
 
 pub(crate) unsafe fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) -> *mut Cursor {
-    let node = get_page(&mut *table.pager, page_num as usize);
+    let node = get_page(&mut table.pager, page_num as usize);
     let num_cells = *leaf_node_num_cells(node);
 
     let mut cursor = Box::new(Cursor {
@@ -296,10 +296,10 @@ pub(crate) unsafe fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) 
 }
 
 pub(crate) unsafe fn internal_node_find(table: &mut Table, page_num: u32, key: u32) -> *mut Cursor {
-    let node = get_page(&mut *table.pager, page_num as usize);
+    let node = get_page(&mut table.pager, page_num as usize);
     let child_index = internal_node_find_child(node, key);
     let child_num = *internal_node_child(node, child_index);
-    let child = get_page(&mut *table.pager, child_num as usize);
+    let child = get_page(&mut table.pager, child_num as usize);
     match get_node_type(child) {
         NodeType::NODE_LEAF => leaf_node_find(table, child_num, key),
         NodeType::NODE_INTERNAL => internal_node_find(table, child_num, key),
@@ -311,7 +311,7 @@ unsafe fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row)
     // Insert the new value in one of the two nodes.
     // Update parent or create a new parent.
     let table = &mut *cursor.table;
-    let pager = &mut *table.pager;
+    let pager = &mut table.pager;
     let old_node = get_page(pager, cursor.page_num as usize);
     let old_max = get_node_max_key(old_node);
     let new_page_num = get_unused_page_num(pager);
@@ -363,14 +363,14 @@ unsafe fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row)
     } else {
         let parent_page_num = *node_parent(old_node);
         let new_max = get_node_max_key(old_node);
-        let parent = get_page(&mut *(&mut *cursor.table).pager, parent_page_num as usize);
+        let parent = get_page(&mut (&mut *cursor.table).pager, parent_page_num as usize);
         update_internal_node_key(parent, old_max, new_max);
         internal_node_insert(&mut *cursor.table, parent_page_num, new_page_num);
     }
 }
 
 pub(crate) unsafe fn leaf_node_insert(cursor: &mut Cursor, key: u32, value: &Row) {
-    let node = get_page(&mut *(&mut *cursor.table).pager, cursor.page_num as usize);
+    let node = get_page(&mut (&mut *cursor.table).pager, cursor.page_num as usize);
 
     let num_cells = *leaf_node_num_cells(node);
     if num_cells >= LEAF_NODE_MAX_CELLS as u32 {

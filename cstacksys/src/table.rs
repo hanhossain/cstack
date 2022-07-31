@@ -8,7 +8,7 @@ use std::ptr::null_mut;
 
 #[repr(C)]
 pub struct Table {
-    pub pager: *mut Pager,
+    pub pager: Pager,
     pub root_page_num: u32,
 }
 
@@ -22,13 +22,13 @@ pub struct Cursor {
 }
 
 pub(crate) unsafe fn cursor_value(cursor: &mut Cursor) -> *mut c_void {
-    let page = get_page(&mut *(&mut *cursor.table).pager, cursor.page_num as usize);
+    let page = get_page(&mut (&mut *cursor.table).pager, cursor.page_num as usize);
     leaf_node_value(page, cursor.cell_num)
 }
 
 pub(crate) unsafe fn cursor_advance(cursor: &mut Cursor) {
     let page_num = cursor.page_num;
-    let node = get_page(&mut *(&mut *cursor.table).pager, page_num as usize);
+    let node = get_page(&mut (&mut *cursor.table).pager, page_num as usize);
 
     cursor.cell_num += 1;
     if cursor.cell_num >= *leaf_node_num_cells(node) {
@@ -45,7 +45,7 @@ pub(crate) unsafe fn cursor_advance(cursor: &mut Cursor) {
 }
 
 pub(crate) unsafe fn db_close(table: &mut Table) {
-    let pager = &mut *table.pager;
+    let pager = &mut table.pager;
 
     for i in 0..pager.num_pages as usize {
         if pager.pages[i as usize].is_null() {
@@ -69,7 +69,6 @@ pub(crate) unsafe fn db_close(table: &mut Table) {
             pager.pages[i] = null_mut();
         }
     }
-    let _ = Box::from_raw(table.pager);
     let _ = Box::from_raw(table as *mut Table);
 }
 
@@ -78,7 +77,7 @@ pub(crate) unsafe fn db_close(table: &mut Table) {
 /// where it should be inserted.
 pub(crate) unsafe fn table_find(table: &mut Table, key: u32) -> *mut Cursor {
     let root_page_num = table.root_page_num;
-    let root_node = get_page(&mut *table.pager, root_page_num as usize);
+    let root_node = get_page(&mut table.pager, root_page_num as usize);
 
     match get_node_type(root_node) {
         NodeType::NODE_INTERNAL => internal_node_find(table, root_page_num, key),
@@ -89,7 +88,7 @@ pub(crate) unsafe fn table_find(table: &mut Table, key: u32) -> *mut Cursor {
 pub(crate) unsafe fn table_start(table: &mut Table) -> *mut Cursor {
     let cursor_ptr = table_find(table, 0);
     let cursor = &mut *cursor_ptr;
-    let node = get_page(&mut *table.pager, cursor.page_num as usize);
+    let node = get_page(&mut table.pager, cursor.page_num as usize);
     let num_cells = *leaf_node_num_cells(node);
     cursor.end_of_table = num_cells == 0;
     cursor_ptr
@@ -107,7 +106,7 @@ pub unsafe extern "C" fn db_open(filename: *const c_char) -> Box<Table> {
     }
 
     Box::new(Table {
-        pager: Box::into_raw(pager),
+        pager,
         root_page_num: 0,
     })
 }
