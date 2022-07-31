@@ -1,7 +1,8 @@
 use libc::{
-    c_char, c_uint, c_void, exit, lseek, malloc, open, read, write, EXIT_FAILURE, O_CREAT, O_RDWR,
+    c_uint, c_void, exit, lseek, malloc, open, read, write, EXIT_FAILURE, O_CREAT, O_RDWR,
     SEEK_END, SEEK_SET, S_IRUSR, S_IWUSR,
 };
+use std::ffi::CString;
 use std::ptr::null_mut;
 
 pub const TABLE_MAX_PAGES: usize = 100;
@@ -84,7 +85,9 @@ pub(crate) unsafe fn pager_flush(pager: &mut Pager, page_num: usize) {
     }
 }
 
-pub(crate) unsafe fn pager_open(filename: *const c_char) -> Pager {
+pub unsafe fn pager_open(filename: &str) -> Pager {
+    let filename_owned = CString::new(filename).unwrap();
+    let filename = filename_owned.as_ptr();
     let fd = open(
         filename,
         O_RDWR | O_CREAT,

@@ -5,22 +5,19 @@ use cstack::vm::{
     do_meta_command, execute_statement, prepare_statement, ExecuteError, MetaCommandError,
     PrepareError, Statement, StatementType,
 };
-use std::ffi::CString;
 
 fn main() {
     let filename = std::env::args()
         .skip(1)
         .next()
         .expect("Must supply a database filename");
-    unsafe {
-        let filename_owned = CString::new(filename).unwrap();
-        let filename = filename_owned.as_ptr();
-        let mut table = Table::open(filename);
+    let mut table = Table::open(&filename);
 
-        loop {
-            print_prompt();
-            let mut input = read_input();
+    loop {
+        print_prompt();
+        let mut input = read_input();
 
+        unsafe {
             if input.starts_with(".") {
                 match do_meta_command(&input, &mut table) {
                     Ok(_) => continue,

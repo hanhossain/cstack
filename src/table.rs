@@ -3,7 +3,7 @@ use crate::node::{
     leaf_node_num_cells, leaf_node_value, set_node_root, NodeType,
 };
 use crate::pager::{get_page, pager_flush, pager_open, Pager, TABLE_MAX_PAGES};
-use libc::{c_char, c_void, close, exit, free, EXIT_FAILURE};
+use libc::{c_void, close, exit, free, EXIT_FAILURE};
 use std::ptr::null_mut;
 
 pub struct Table {
@@ -34,15 +34,17 @@ impl Table {
         cursor
     }
 
-    pub unsafe fn open(filename: *const c_char) -> Table {
-        let mut pager = pager_open(filename);
-
-        if pager.num_pages == 0 {
-            // New database file. Initialize page 0 as leaf node.
-            let root_node = get_page(&mut pager, 0);
-            initialize_leaf_node(root_node);
-            set_node_root(root_node, true);
-        }
+    pub fn open(filename: &str) -> Table {
+        let pager = unsafe {
+            let mut pager = pager_open(filename);
+            if pager.num_pages == 0 {
+                // New database file. Initialize page 0 as leaf node.
+                let root_node = get_page(&mut pager, 0);
+                initialize_leaf_node(root_node);
+                set_node_root(root_node, true);
+            }
+            pager
+        };
 
         Table {
             pager,
