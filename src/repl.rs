@@ -22,11 +22,11 @@ pub struct InputBuffer {
 }
 
 impl InputBuffer {
-    pub fn new() -> Box<InputBuffer> {
-        Box::new(InputBuffer {
+    pub fn new() -> InputBuffer {
+        InputBuffer {
             buffer: null_mut(),
             input_length: 0,
-        })
+        }
     }
 }
 

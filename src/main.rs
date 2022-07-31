@@ -25,7 +25,7 @@ fn main() {
             let meta_owned = CString::new(".").unwrap();
             let meta = meta_owned.as_ptr();
             if *input_buffer.buffer == *meta {
-                match do_meta_command(&*input_buffer, &mut table) {
+                match do_meta_command(&input_buffer, &mut table) {
                     MetaCommandResult::META_COMMAND_SUCCESS => continue,
                     MetaCommandResult::META_COMMAND_UNRECOGNIZED_COMMAND => {
                         println!(

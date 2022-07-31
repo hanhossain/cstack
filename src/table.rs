@@ -70,7 +70,6 @@ pub(crate) unsafe fn db_close(table: &mut Table) {
             pager.pages[i] = null_mut();
         }
     }
-    let _ = Box::from_raw(table as *mut Table);
 }
 
 /// Return the position of the given key.
@@ -96,7 +95,7 @@ pub(crate) unsafe fn table_start(table: &mut Table) -> Cursor {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn db_open(filename: *const c_char) -> Box<Table> {
+pub unsafe extern "C" fn db_open(filename: *const c_char) -> Table {
     let mut pager = pager_open(filename);
 
     if pager.num_pages == 0 {
@@ -106,8 +105,8 @@ pub unsafe extern "C" fn db_open(filename: *const c_char) -> Box<Table> {
         set_node_root(root_node, true);
     }
 
-    Box::new(Table {
+    Table {
         pager,
         root_page_num: 0,
-    })
+    }
 }
