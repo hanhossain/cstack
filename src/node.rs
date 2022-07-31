@@ -1,4 +1,3 @@
-#![allow(non_camel_case_types)]
 use crate::pager::{get_page, get_unused_page_num, PAGE_SIZE};
 use crate::serialization::{serialize_row, Row, ROW_SIZE};
 use crate::table::{Cursor, Table};
@@ -52,15 +51,15 @@ const LEAF_NODE_LEFT_SPLIT_COUNT: usize = (LEAF_NODE_MAX_CELLS + 1) - LEAF_NODE_
 const INTERNAL_NODE_MAX_CELLS: usize = 3;
 
 pub enum NodeType {
-    NODE_INTERNAL,
-    NODE_LEAF,
+    Internal,
+    Leaf,
 }
 
 impl From<u8> for NodeType {
     fn from(value: u8) -> Self {
         match value {
-            0 => NodeType::NODE_INTERNAL,
-            1 => NodeType::NODE_LEAF,
+            0 => NodeType::Internal,
+            1 => NodeType::Leaf,
             _ => unreachable!(),
         }
     }
@@ -69,8 +68,8 @@ impl From<u8> for NodeType {
 impl From<NodeType> for u8 {
     fn from(node_type: NodeType) -> Self {
         match node_type {
-            NodeType::NODE_INTERNAL => 0,
-            NodeType::NODE_LEAF => 1,
+            NodeType::Internal => 0,
+            NodeType::Leaf => 1,
         }
     }
 }
@@ -112,7 +111,7 @@ unsafe fn internal_node_cell(node: *mut c_void, cell_num: u32) -> *mut u32 {
 }
 
 unsafe fn initialize_internal_node(node: *mut c_void) {
-    set_node_type(node, NodeType::NODE_INTERNAL);
+    set_node_type(node, NodeType::Internal);
     set_node_root(node, false);
     *internal_node_num_keys(node) = 0;
 }
@@ -157,13 +156,13 @@ pub(crate) unsafe fn leaf_node_next_leaf(node: *mut c_void) -> *mut u32 {
 
 unsafe fn get_node_max_key(node: *mut c_void) -> u32 {
     match get_node_type(node) {
-        NodeType::NODE_INTERNAL => *internal_node_key(node, *internal_node_num_keys(node) - 1),
-        NodeType::NODE_LEAF => *leaf_node_key(node, *leaf_node_num_cells(node) - 1),
+        NodeType::Internal => *internal_node_key(node, *internal_node_num_keys(node) - 1),
+        NodeType::Leaf => *leaf_node_key(node, *leaf_node_num_cells(node) - 1),
     }
 }
 
 pub(crate) unsafe fn initialize_leaf_node(node: *mut c_void) {
-    set_node_type(node, NodeType::NODE_LEAF);
+    set_node_type(node, NodeType::Leaf);
     set_node_root(node, false);
     *leaf_node_num_cells(node) = 0;
     *leaf_node_next_leaf(node) = 0; // 0 represents no sibling
@@ -300,8 +299,8 @@ pub(crate) unsafe fn internal_node_find(table: &mut Table, page_num: u32, key: u
     let child_num = *internal_node_child(node, child_index);
     let child = get_page(&mut table.pager, child_num as usize);
     match get_node_type(child) {
-        NodeType::NODE_LEAF => leaf_node_find(table, child_num, key),
-        NodeType::NODE_INTERNAL => internal_node_find(table, child_num, key),
+        NodeType::Leaf => leaf_node_find(table, child_num, key),
+        NodeType::Internal => internal_node_find(table, child_num, key),
     }
 }
 

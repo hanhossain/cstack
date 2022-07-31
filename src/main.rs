@@ -2,8 +2,8 @@ use cstack::repl::{print_prompt, read_input};
 use cstack::serialization::Row;
 use cstack::table::Table;
 use cstack::vm::{
-    do_meta_command, execute_statement, prepare_statement, ExecuteResult, MetaCommandResult,
-    PrepareResult, Statement, StatementType,
+    do_meta_command, execute_statement, prepare_statement, ExecuteError, MetaCommandError,
+    PrepareError, Statement, StatementType,
 };
 use std::ffi::CString;
 
@@ -22,8 +22,8 @@ fn main() {
 
             if input.starts_with(".") {
                 match do_meta_command(&input, &mut table) {
-                    MetaCommandResult::META_COMMAND_SUCCESS => continue,
-                    MetaCommandResult::META_COMMAND_UNRECOGNIZED_COMMAND => {
+                    Ok(_) => continue,
+                    Err(MetaCommandError::UnrecognizedCommand) => {
                         println!("Unrecognized command '{}'", input);
                         continue;
                     }
@@ -31,35 +31,36 @@ fn main() {
             }
 
             let mut statement = Statement {
-                r#type: StatementType::STATEMENT_SELECT,
+                r#type: StatementType::Select,
                 row_to_insert: Row::new(),
             };
 
-            match prepare_statement(&mut input, &mut statement) {
-                PrepareResult::PREPARE_SUCCESS => (),
-                PrepareResult::PREPARE_NEGATIVE_ID => {
-                    println!("ID must be positive.");
-                    continue;
-                }
-                PrepareResult::PREPARE_STRING_TOO_LONG => {
-                    println!("String is too long.");
-                    continue;
-                }
-                PrepareResult::PREPARE_SYNTAX_ERROR => {
-                    println!("Syntax error. Could not parse statement.");
-                    continue;
-                }
-                PrepareResult::PREPARE_UNRECOGNIZED_STATEMENT => {
-                    println!("Unrecognized keyword at start of '{}'.", input);
-                    continue;
+            if let Err(error) = prepare_statement(&mut input, &mut statement) {
+                match error {
+                    PrepareError::NegativeId => {
+                        println!("ID must be positive.");
+                        continue;
+                    }
+                    PrepareError::StringTooLong => {
+                        println!("String is too long.");
+                        continue;
+                    }
+                    PrepareError::SyntaxError => {
+                        println!("Syntax error. Could not parse statement.");
+                        continue;
+                    }
+                    PrepareError::UnrecognizedStatement => {
+                        println!("Unrecognized keyword at start of '{}'.", input);
+                        continue;
+                    }
                 }
             }
 
             match execute_statement(&statement, &mut table) {
-                ExecuteResult::EXECUTE_SUCCESS => {
+                Ok(_) => {
                     println!("Executed.");
                 }
-                ExecuteResult::EXECUTE_DUPLICATE_KEY => {
+                Err(ExecuteError::DuplicateKey) => {
                     println!("Error: Duplicate key.");
                 }
             }

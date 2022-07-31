@@ -33,7 +33,7 @@ pub unsafe fn print_tree(pager: &mut Pager, page_num: u32, indentation_level: u3
     let node = get_page(pager, page_num as usize);
 
     match get_node_type(node) {
-        NodeType::NODE_LEAF => {
+        NodeType::Leaf => {
             let num_keys = *leaf_node_num_cells(node);
             indent(indentation_level);
             println!("- leaf (size {})", num_keys);
@@ -42,7 +42,7 @@ pub unsafe fn print_tree(pager: &mut Pager, page_num: u32, indentation_level: u3
                 println!("- {}", *leaf_node_key(node, i));
             }
         }
-        NodeType::NODE_INTERNAL => {
+        NodeType::Internal => {
             let num_keys = *internal_node_num_keys(node);
             indent(indentation_level);
             println!("- internal (size {})", num_keys);

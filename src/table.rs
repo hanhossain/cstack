@@ -20,8 +20,8 @@ impl Table {
         let root_node = get_page(&mut self.pager, root_page_num as usize);
 
         match get_node_type(root_node) {
-            NodeType::NODE_INTERNAL => internal_node_find(self, root_page_num, key),
-            NodeType::NODE_LEAF => leaf_node_find(self, root_page_num, key),
+            NodeType::Internal => internal_node_find(self, root_page_num, key),
+            NodeType::Leaf => leaf_node_find(self, root_page_num, key),
         }
     }
 
