@@ -7,7 +7,7 @@ use crate::serialization::{
     deserialize_row, print_row, Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE, EMAIL_SIZE,
     USERNAME_SIZE,
 };
-use crate::table::{db_close, table_find, table_start, Cursor, Table};
+use crate::table::{db_close, table_find, table_start, Table};
 use libc::{exit, strcpy, EXIT_SUCCESS};
 use std::ffi::{CStr, CString};
 use std::str::FromStr;
@@ -134,7 +134,7 @@ unsafe fn execute_insert(statement: &Statement, table: &mut Table) -> ExecuteRes
 
     let row_to_insert = &statement.row_to_insert;
     let key_to_insert = row_to_insert.id;
-    let cursor = &mut *table_find(table, key_to_insert);
+    let mut cursor = table_find(table, key_to_insert);
 
     if cursor.cell_num < num_cells {
         let key_at_index = *leaf_node_key(node, cursor.cell_num);
@@ -143,12 +143,12 @@ unsafe fn execute_insert(statement: &Statement, table: &mut Table) -> ExecuteRes
         }
     }
 
-    leaf_node_insert(cursor, row_to_insert.id, row_to_insert);
+    leaf_node_insert(&mut cursor, row_to_insert.id, row_to_insert);
     ExecuteResult::EXECUTE_SUCCESS
 }
 
 unsafe fn execute_select(_statement: &Statement, table: &mut Table) -> ExecuteResult {
-    let cursor = &mut *table_start(table);
+    let mut cursor = table_start(table);
     while !cursor.end_of_table {
         let mut row = Row {
             id: 0,
@@ -160,7 +160,6 @@ unsafe fn execute_select(_statement: &Statement, table: &mut Table) -> ExecuteRe
         cursor.advance();
     }
 
-    let _ = Box::from_raw(cursor as *mut Cursor);
     ExecuteResult::EXECUTE_SUCCESS
 }
 

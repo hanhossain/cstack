@@ -76,7 +76,7 @@ pub(crate) unsafe fn db_close(table: &mut Table) {
 /// Return the position of the given key.
 /// If the key is not present, return the position
 /// where it should be inserted.
-pub(crate) unsafe fn table_find(table: &mut Table, key: u32) -> *mut Cursor {
+pub(crate) unsafe fn table_find(table: &mut Table, key: u32) -> Cursor {
     let root_page_num = table.root_page_num;
     let root_node = get_page(&mut table.pager, root_page_num as usize);
 
@@ -86,14 +86,13 @@ pub(crate) unsafe fn table_find(table: &mut Table, key: u32) -> *mut Cursor {
     }
 }
 
-pub(crate) unsafe fn table_start(table: &mut Table) -> *mut Cursor {
-    let cursor_ptr = table_find(table, 0);
-    let cursor = &mut *cursor_ptr;
+pub(crate) unsafe fn table_start(table: &mut Table) -> Cursor {
+    let mut cursor = table_find(table, 0);
     let page_num = cursor.page_num as usize;
     let node = get_page(&mut table.pager, page_num);
     let num_cells = *leaf_node_num_cells(node);
     cursor.end_of_table = num_cells == 0;
-    cursor_ptr
+    cursor
 }
 
 #[no_mangle]

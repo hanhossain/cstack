@@ -264,16 +264,16 @@ unsafe fn internal_node_insert(table: &mut Table, parent_page_num: u32, child_pa
     }
 }
 
-pub(crate) unsafe fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) -> *mut Cursor {
+pub(crate) unsafe fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) -> Cursor {
     let node = get_page(&mut table.pager, page_num as usize);
     let num_cells = *leaf_node_num_cells(node);
 
-    let mut cursor = Box::new(Cursor {
+    let mut cursor = Cursor {
         table,
         page_num,
         cell_num: 0,
         end_of_table: false,
-    });
+    };
 
     // Binary search
     let mut min_index = 0;
@@ -283,7 +283,7 @@ pub(crate) unsafe fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) 
         let key_at_index = *leaf_node_key(node, index);
         if key == key_at_index {
             cursor.cell_num = index;
-            return Box::into_raw(cursor);
+            return cursor;
         } else if key < key_at_index {
             one_past_max_index = index;
         } else {
@@ -292,10 +292,10 @@ pub(crate) unsafe fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) 
     }
 
     cursor.cell_num = min_index;
-    Box::into_raw(cursor)
+    cursor
 }
 
-pub(crate) unsafe fn internal_node_find(table: &mut Table, page_num: u32, key: u32) -> *mut Cursor {
+pub(crate) unsafe fn internal_node_find(table: &mut Table, page_num: u32, key: u32) -> Cursor {
     let node = get_page(&mut table.pager, page_num as usize);
     let child_index = internal_node_find_child(node, key);
     let child_num = *internal_node_child(node, child_index);
