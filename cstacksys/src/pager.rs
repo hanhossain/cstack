@@ -1,6 +1,6 @@
 use libc::{
-    c_char, c_void, exit, lseek, malloc, open, read, write, EXIT_FAILURE, O_CREAT, O_RDWR,
-    SEEK_END, SEEK_SET,
+    c_char, c_uint, c_void, exit, lseek, malloc, open, read, write, EXIT_FAILURE, O_CREAT, O_RDWR,
+    SEEK_END, SEEK_SET, S_IRUSR, S_IWUSR,
 };
 use std::ptr::null_mut;
 
@@ -86,7 +86,11 @@ pub(crate) unsafe fn pager_flush(pager: &mut Pager, page_num: usize) {
 }
 
 pub(crate) unsafe fn pager_open(filename: *const c_char) -> Pager {
-    let fd = open(filename, O_RDWR | O_CREAT);
+    let fd = open(
+        filename,
+        O_RDWR | O_CREAT,
+        S_IRUSR as c_uint | S_IWUSR as c_uint,
+    );
     if fd == -1 {
         println!("Unable to open file");
         exit(EXIT_FAILURE);

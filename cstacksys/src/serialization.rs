@@ -18,6 +18,16 @@ pub struct Row {
     pub email: [c_char; EMAIL_SIZE],
 }
 
+impl Row {
+    pub fn new() -> Row {
+        Row {
+            id: 0,
+            email: [0; EMAIL_SIZE],
+            username: [0; USERNAME_SIZE],
+        }
+    }
+}
+
 pub(crate) unsafe fn serialize_row(source: &Row, destination: *mut c_void) {
     memcpy(
         destination.add(ID_OFFSET),

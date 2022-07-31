@@ -1,4 +1,3 @@
-use crate::callback_printf;
 use crate::node::{
     get_node_type, internal_node_child, internal_node_key, internal_node_num_keys,
     internal_node_right_child, leaf_node_key, leaf_node_num_cells, NodeType,
@@ -9,16 +8,13 @@ use crate::pager::{get_page, Pager};
 use crate::serialization::ROW_SIZE;
 use libc::{c_char, exit, EXIT_FAILURE};
 use std::ffi::CString;
-use std::io::BufRead;
+use std::io::{BufRead, Write};
 use std::ptr::null_mut;
 
 #[no_mangle]
 pub extern "C" fn print_prompt() {
-    let value = "db > ";
-    let c = CString::new(value).unwrap();
-    unsafe {
-        callback_printf(c.as_ptr());
-    }
+    std::io::stdout().write_all(b"db > ").unwrap();
+    std::io::stdout().flush().unwrap();
 }
 
 #[repr(C)]

@@ -1,12 +1,6 @@
-mod node;
-mod pager;
-mod repl;
-mod serialization;
-mod table;
-mod vm;
-
-#[allow(unused_doc_comments)]
-/// cbindgen:ignore
-extern "C" {
-    fn callback_printf(string: *const libc::c_char);
-}
+pub mod node;
+pub mod pager;
+pub mod repl;
+pub mod serialization;
+pub mod table;
+pub mod vm;

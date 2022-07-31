@@ -4,8 +4,7 @@ use crate::node::{leaf_node_insert, leaf_node_key, leaf_node_num_cells};
 use crate::pager::get_page;
 use crate::repl::{print_constants, print_tree, InputBuffer};
 use crate::serialization::{
-    deserialize_row, print_row, Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE, EMAIL_SIZE,
-    USERNAME_SIZE,
+    deserialize_row, print_row, Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE,
 };
 use crate::table::{db_close, table_find, table_start, Table};
 use libc::{exit, strcpy, EXIT_SUCCESS};
@@ -20,8 +19,8 @@ pub enum StatementType {
 
 #[repr(C)]
 pub struct Statement {
-    r#type: StatementType,
-    row_to_insert: Row, // only used by insert statement
+    pub r#type: StatementType,
+    pub row_to_insert: Row, // only used by insert statement
 }
 
 #[repr(C)]
@@ -150,11 +149,7 @@ unsafe fn execute_insert(statement: &Statement, table: &mut Table) -> ExecuteRes
 unsafe fn execute_select(_statement: &Statement, table: &mut Table) -> ExecuteResult {
     let mut cursor = table_start(table);
     while !cursor.end_of_table {
-        let mut row = Row {
-            id: 0,
-            email: [0; EMAIL_SIZE],
-            username: [0; USERNAME_SIZE],
-        };
+        let mut row = Row::new();
         deserialize_row(cursor.value(), &mut row);
         print_row(&row);
         cursor.advance();
