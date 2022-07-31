@@ -51,7 +51,6 @@ const LEAF_NODE_LEFT_SPLIT_COUNT: usize = (LEAF_NODE_MAX_CELLS + 1) - LEAF_NODE_
 // Internal Node Body Layout
 const INTERNAL_NODE_MAX_CELLS: usize = 3;
 
-#[repr(C)]
 pub enum NodeType {
     NODE_INTERNAL,
     NODE_LEAF,

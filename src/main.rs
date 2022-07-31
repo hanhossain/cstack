@@ -1,6 +1,6 @@
 use cstack::repl::{print_prompt, read_input, InputBuffer};
 use cstack::serialization::Row;
-use cstack::table::db_open;
+use cstack::table::Table;
 use cstack::vm::{
     do_meta_command, execute_statement, prepare_statement, ExecuteResult, MetaCommandResult,
     PrepareResult, Statement, StatementType,
@@ -14,7 +14,7 @@ fn main() {
     unsafe {
         let filename_owned = CString::new(filename).unwrap();
         let filename = filename_owned.as_ptr();
-        let mut table = db_open(filename);
+        let mut table = Table::open(filename);
 
         let mut input_buffer = InputBuffer::new();
 

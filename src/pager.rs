@@ -7,7 +7,6 @@ use std::ptr::null_mut;
 pub const TABLE_MAX_PAGES: usize = 100;
 pub const PAGE_SIZE: usize = 4096;
 
-#[repr(C)]
 pub struct Pager {
     pub file_descriptor: i32,
     pub file_length: u32,

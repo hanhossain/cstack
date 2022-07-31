@@ -6,24 +6,21 @@ use crate::repl::{print_constants, print_tree, InputBuffer};
 use crate::serialization::{
     deserialize_row, print_row, Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE,
 };
-use crate::table::{db_close, table_find, table_start, Table};
+use crate::table::Table;
 use libc::{exit, strcpy, EXIT_SUCCESS};
 use std::ffi::{CStr, CString};
 use std::str::FromStr;
 
-#[repr(C)]
 pub enum StatementType {
     STATEMENT_INSERT,
     STATEMENT_SELECT,
 }
 
-#[repr(C)]
 pub struct Statement {
     pub r#type: StatementType,
     pub row_to_insert: Row, // only used by insert statement
 }
 
-#[repr(C)]
 pub enum PrepareResult {
     PREPARE_SUCCESS,
     PREPARE_NEGATIVE_ID,
@@ -32,8 +29,7 @@ pub enum PrepareResult {
     PREPARE_UNRECOGNIZED_STATEMENT,
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn prepare_statement(
+pub unsafe fn prepare_statement(
     input_buffer: &mut InputBuffer,
     statement: &mut Statement,
 ) -> PrepareResult {
@@ -90,21 +86,16 @@ unsafe fn prepare_insert(
     PrepareResult::PREPARE_SUCCESS
 }
 
-#[repr(C)]
 pub enum MetaCommandResult {
     META_COMMAND_SUCCESS,
     META_COMMAND_UNRECOGNIZED_COMMAND,
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn do_meta_command(
-    input_buffer: &InputBuffer,
-    table: &mut Table,
-) -> MetaCommandResult {
+pub unsafe fn do_meta_command(input_buffer: &InputBuffer, table: &mut Table) -> MetaCommandResult {
     let query = CStr::from_ptr(input_buffer.buffer).to_str().unwrap();
     match query {
         ".exit" => {
-            db_close(table);
+            table.close();
             exit(EXIT_SUCCESS);
         }
         ".btree" => {
@@ -121,7 +112,6 @@ pub unsafe extern "C" fn do_meta_command(
     }
 }
 
-#[repr(C)]
 pub enum ExecuteResult {
     EXECUTE_SUCCESS,
     EXECUTE_DUPLICATE_KEY,
@@ -133,7 +123,7 @@ unsafe fn execute_insert(statement: &Statement, table: &mut Table) -> ExecuteRes
 
     let row_to_insert = &statement.row_to_insert;
     let key_to_insert = row_to_insert.id;
-    let mut cursor = table_find(table, key_to_insert);
+    let mut cursor = table.find(key_to_insert);
 
     if cursor.cell_num < num_cells {
         let key_at_index = *leaf_node_key(node, cursor.cell_num);
@@ -147,7 +137,7 @@ unsafe fn execute_insert(statement: &Statement, table: &mut Table) -> ExecuteRes
 }
 
 unsafe fn execute_select(_statement: &Statement, table: &mut Table) -> ExecuteResult {
-    let mut cursor = table_start(table);
+    let mut cursor = table.start();
     while !cursor.end_of_table {
         let mut row = Row::new();
         deserialize_row(cursor.value(), &mut row);
@@ -158,11 +148,7 @@ unsafe fn execute_select(_statement: &Statement, table: &mut Table) -> ExecuteRe
     ExecuteResult::EXECUTE_SUCCESS
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn execute_statement(
-    statement: &Statement,
-    table: &mut Table,
-) -> ExecuteResult {
+pub unsafe fn execute_statement(statement: &Statement, table: &mut Table) -> ExecuteResult {
     match statement.r#type {
         StatementType::STATEMENT_INSERT => execute_insert(statement, table),
         StatementType::STATEMENT_SELECT => execute_select(statement, table),
