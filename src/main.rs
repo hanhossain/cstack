@@ -1,7 +1,14 @@
-use cstack::repl::{print_prompt, read_input};
-use cstack::serialization::Row;
-use cstack::table::Table;
-use cstack::vm::{
+mod node;
+mod pager;
+mod repl;
+mod serialization;
+mod table;
+mod vm;
+
+use repl::{print_prompt, read_input};
+use serialization::Row;
+use table::Table;
+use vm::{
     do_meta_command, execute_statement, prepare_statement, ExecuteError, MetaCommandError,
     PrepareError, Statement, StatementType,
 };
