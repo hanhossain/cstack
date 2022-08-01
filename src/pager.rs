@@ -1,9 +1,10 @@
 use crate::node::Node;
 use libc::{
-    c_uint, c_void, exit, lseek, open, read, write, EXIT_FAILURE, O_CREAT, O_RDWR, SEEK_END,
-    SEEK_SET, S_IRUSR, S_IWUSR,
+    c_uint, c_void, lseek, open, read, write, EXIT_FAILURE, O_CREAT, O_RDWR, SEEK_END, SEEK_SET,
+    S_IRUSR, S_IWUSR,
 };
 use std::ffi::CString;
+use std::process::exit;
 use std::ptr::null_mut;
 
 pub const TABLE_MAX_PAGES: usize = 100;

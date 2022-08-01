@@ -2,8 +2,9 @@ use crate::node::{leaf_node_insert, leaf_node_key, leaf_node_num_cells};
 use crate::repl::{print_constants, print_tree};
 use crate::serialization::{deserialize_row, Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE};
 use crate::table::Table;
-use libc::{exit, strcpy, EXIT_SUCCESS};
+use libc::{strcpy, EXIT_SUCCESS};
 use std::ffi::CString;
+use std::process::exit;
 use std::str::FromStr;
 
 pub enum StatementType {

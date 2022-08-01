@@ -1,9 +1,10 @@
 use crate::pager::PAGE_SIZE;
 use crate::serialization::{serialize_row, Row, ROW_SIZE};
 use crate::table::{Cursor, Table};
-use libc::{exit, memcpy, EXIT_FAILURE};
+use libc::{memcpy, EXIT_FAILURE};
 use std::ffi::c_void;
 use std::mem::size_of;
+use std::process::exit;
 
 // Common Node Header Layout
 const NODE_TYPE_OFFSET: usize = 0;

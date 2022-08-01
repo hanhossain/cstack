@@ -3,7 +3,8 @@ use crate::node::{
     leaf_node_num_cells, leaf_node_value, Node, NodeType,
 };
 use crate::pager::{Pager, TABLE_MAX_PAGES};
-use libc::{c_void, close, exit, EXIT_FAILURE};
+use libc::{c_void, close, EXIT_FAILURE};
+use std::process::exit;
 use std::ptr::null_mut;
 
 pub struct Table {
