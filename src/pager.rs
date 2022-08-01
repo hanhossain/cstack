@@ -1,7 +1,7 @@
 use crate::node::Node;
 use libc::{
-    c_uint, c_void, exit, lseek, malloc, open, read, write, EXIT_FAILURE, O_CREAT, O_RDWR,
-    SEEK_END, SEEK_SET, S_IRUSR, S_IWUSR,
+    c_uint, c_void, exit, lseek, open, read, write, EXIT_FAILURE, O_CREAT, O_RDWR, SEEK_END,
+    SEEK_SET, S_IRUSR, S_IWUSR,
 };
 use std::ffi::CString;
 use std::ptr::null_mut;
@@ -52,7 +52,8 @@ impl Pager {
 
         if self.pages[page_num].is_null() {
             // Cache miss. Allocate memory and load from file.
-            let page = malloc(PAGE_SIZE);
+            // let page = malloc(PAGE_SIZE);
+            let page = Box::into_raw(Box::new([0u8; PAGE_SIZE]));
             let mut num_pages = self.file_length as usize / PAGE_SIZE;
 
             // We might save a partial page at the end of the file
@@ -66,14 +67,14 @@ impl Pager {
                     page_num as i64 * PAGE_SIZE as i64,
                     SEEK_SET,
                 );
-                let bytes_read = read(self.file_descriptor, page, PAGE_SIZE);
+                let bytes_read = read(self.file_descriptor, page as *mut c_void, PAGE_SIZE);
                 if bytes_read == -1 {
                     println!("Error reading file");
                     exit(EXIT_FAILURE);
                 }
             }
 
-            self.pages[page_num] = page;
+            self.pages[page_num] = page as *mut c_void;
 
             if page_num >= self.num_pages as usize {
                 self.num_pages = page_num as u32 + 1;

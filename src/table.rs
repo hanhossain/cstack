@@ -3,7 +3,7 @@ use crate::node::{
     leaf_node_num_cells, leaf_node_value, Node, NodeType,
 };
 use crate::pager::{Pager, TABLE_MAX_PAGES};
-use libc::{c_void, close, exit, free, EXIT_FAILURE};
+use libc::{c_void, close, exit, EXIT_FAILURE};
 use std::ptr::null_mut;
 
 pub struct Table {
@@ -61,7 +61,7 @@ impl Table {
                 continue;
             }
             pager.flush(i);
-            free(pager.pages[i]);
+            let _ = Box::from_raw(pager.pages[i]);
             pager.pages[i] = null_mut();
         }
 
@@ -74,7 +74,7 @@ impl Table {
         for i in 0..TABLE_MAX_PAGES {
             let page = pager.pages[i];
             if !page.is_null() {
-                free(page);
+                let _ = Box::from_raw(page);
                 pager.pages[i] = null_mut();
             }
         }
