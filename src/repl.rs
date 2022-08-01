@@ -1,8 +1,7 @@
 use crate::node::{
-    get_node_type, internal_node_child, internal_node_key, internal_node_num_keys,
-    internal_node_right_child, leaf_node_key, leaf_node_num_cells, NodeType,
-    COMMON_NODE_HEADER_SIZE, LEAF_NODE_CELL_SIZE, LEAF_NODE_HEADER_SIZE, LEAF_NODE_MAX_CELLS,
-    LEAF_NODE_SPACE_FOR_CELLS,
+    internal_node_child, internal_node_key, internal_node_num_keys, internal_node_right_child,
+    leaf_node_key, leaf_node_num_cells, Node, NodeType, COMMON_NODE_HEADER_SIZE,
+    LEAF_NODE_CELL_SIZE, LEAF_NODE_HEADER_SIZE, LEAF_NODE_MAX_CELLS, LEAF_NODE_SPACE_FOR_CELLS,
 };
 use crate::pager::Pager;
 use crate::serialization::ROW_SIZE;
@@ -32,7 +31,7 @@ pub fn print_constants() {
 pub unsafe fn print_tree(pager: &mut Pager, page_num: u32, indentation_level: u32) {
     let node = pager.get_page(page_num as usize);
 
-    match get_node_type(node) {
+    match Node::new(node).node_type() {
         NodeType::Leaf => {
             let num_keys = *leaf_node_num_cells(node);
             indent(indentation_level);

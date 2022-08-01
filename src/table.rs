@@ -1,6 +1,6 @@
 use crate::node::{
-    get_node_type, initialize_leaf_node, internal_node_find, leaf_node_find, leaf_node_next_leaf,
-    leaf_node_num_cells, leaf_node_value, set_node_root, NodeType,
+    initialize_leaf_node, internal_node_find, leaf_node_find, leaf_node_next_leaf,
+    leaf_node_num_cells, leaf_node_value, Node, NodeType,
 };
 use crate::pager::{Pager, TABLE_MAX_PAGES};
 use libc::{c_void, close, exit, free, EXIT_FAILURE};
@@ -19,7 +19,7 @@ impl Table {
         let root_page_num = self.root_page_num;
         let root_node = self.pager.get_page(root_page_num as usize);
 
-        match get_node_type(root_node) {
+        match Node::new(root_node).node_type() {
             NodeType::Internal => internal_node_find(self, root_page_num, key),
             NodeType::Leaf => leaf_node_find(self, root_page_num, key),
         }
@@ -41,7 +41,8 @@ impl Table {
                 // New database file. Initialize page 0 as leaf node.
                 let root_node = pager.get_page(0);
                 initialize_leaf_node(root_node);
-                set_node_root(root_node, true);
+                let mut root_node = Node::new(root_node);
+                root_node.set_root(true);
             }
             pager
         };
