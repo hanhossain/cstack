@@ -106,14 +106,14 @@ pub enum ExecuteError {
 
 unsafe fn execute_insert(statement: &Statement, table: &mut Table) -> Result<(), ExecuteError> {
     let node = table.pager.get_page(table.root_page_num as usize);
-    let num_cells = *leaf_node_num_cells(node);
+    let num_cells = *leaf_node_num_cells(node.buffer);
 
     let row_to_insert = &statement.row_to_insert;
     let key_to_insert = row_to_insert.id;
     let mut cursor = table.find(key_to_insert);
 
     if cursor.cell_num < num_cells {
-        let key_at_index = *leaf_node_key(node, cursor.cell_num);
+        let key_at_index = *leaf_node_key(node.buffer, cursor.cell_num);
         if key_at_index == key_to_insert {
             return Err(ExecuteError::DuplicateKey);
         }

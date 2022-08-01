@@ -19,7 +19,7 @@ impl Table {
         let root_page_num = self.root_page_num;
         let root_node = self.pager.get_page(root_page_num as usize);
 
-        match Node::new(root_node).node_type() {
+        match root_node.node_type() {
             NodeType::Internal => internal_node_find(self, root_page_num, key),
             NodeType::Leaf => leaf_node_find(self, root_page_num, key),
         }
@@ -29,7 +29,7 @@ impl Table {
         let mut cursor = self.find(0);
         let page_num = cursor.page_num as usize;
         let node = self.pager.get_page(page_num);
-        let num_cells = *leaf_node_num_cells(node);
+        let num_cells = *leaf_node_num_cells(node.buffer);
         cursor.end_of_table = num_cells == 0;
         cursor
     }
@@ -40,8 +40,8 @@ impl Table {
             if pager.num_pages == 0 {
                 // New database file. Initialize page 0 as leaf node.
                 let root_node = pager.get_page(0);
-                initialize_leaf_node(root_node);
-                let mut root_node = Node::new(root_node);
+                initialize_leaf_node(root_node.buffer);
+                let mut root_node = Node::new(root_node.buffer);
                 root_node.set_root(true);
             }
             pager
@@ -92,7 +92,7 @@ pub struct Cursor {
 impl Cursor {
     pub unsafe fn value(&mut self) -> *mut c_void {
         let page = (*self.table).pager.get_page(self.page_num as usize);
-        leaf_node_value(page, self.cell_num)
+        leaf_node_value(page.buffer, self.cell_num)
     }
 
     pub unsafe fn advance(&mut self) {
@@ -100,9 +100,9 @@ impl Cursor {
         let node = (&mut *self.table).pager.get_page(page_num as usize);
 
         self.cell_num += 1;
-        if self.cell_num >= *leaf_node_num_cells(node) {
+        if self.cell_num >= *leaf_node_num_cells(node.buffer) {
             // Advance to next leaf node
-            let next_page_num = *leaf_node_next_leaf(node);
+            let next_page_num = *leaf_node_next_leaf(node.buffer);
             if next_page_num == 0 {
                 // This was the rightmost leaf
                 self.end_of_table = true;

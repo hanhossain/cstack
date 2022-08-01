@@ -1,3 +1,4 @@
+use crate::node::Node;
 use libc::{
     c_uint, c_void, exit, lseek, malloc, open, read, write, EXIT_FAILURE, O_CREAT, O_RDWR,
     SEEK_END, SEEK_SET, S_IRUSR, S_IWUSR,
@@ -43,7 +44,7 @@ impl Pager {
         }
     }
 
-    pub unsafe fn get_page(&mut self, page_num: usize) -> *mut c_void {
+    pub unsafe fn get_page(&mut self, page_num: usize) -> Node {
         if page_num > TABLE_MAX_PAGES {
             println!("Tried to fetch page number out of bounds. {page_num} > {TABLE_MAX_PAGES}");
             exit(EXIT_FAILURE);
@@ -79,7 +80,7 @@ impl Pager {
             }
         }
 
-        self.pages[page_num]
+        Node::new(self.pages[page_num])
     }
 
     pub unsafe fn flush(&mut self, page_num: usize) {
