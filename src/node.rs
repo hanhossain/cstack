@@ -2,19 +2,20 @@ use crate::pager::PAGE_SIZE;
 use crate::serialization::{serialize_row, Row, ROW_SIZE};
 use crate::table::{Cursor, Table};
 use libc::{memcpy, EXIT_FAILURE};
+use serde::{Deserialize, Serialize};
 use std::ffi::c_void;
 use std::mem::size_of;
 use std::process::exit;
 
 // Common Node Header Layout
-const NODE_TYPE_OFFSET: usize = 0;
-const NODE_TYPE_SIZE: usize = size_of::<u8>();
-const IS_ROOT_SIZE: usize = size_of::<u8>();
-const IS_ROOT_OFFSET: usize = NODE_TYPE_SIZE;
-const PARENT_POINTER_SIZE: usize = size_of::<u32>();
-const PARENT_POINTER_OFFSET: usize = IS_ROOT_OFFSET + IS_ROOT_SIZE;
-pub(crate) const COMMON_NODE_HEADER_SIZE: usize =
-    NODE_TYPE_SIZE + IS_ROOT_SIZE + PARENT_POINTER_SIZE;
+pub(crate) const COMMON_NODE_HEADER_SIZE: usize = size_of::<NodeHeader>();
+
+#[derive(Serialize, Deserialize)]
+struct NodeHeader {
+    r#type: u8,
+    is_root: u8,
+    parent: u32,
+}
 
 // Internal Node Header Layout
 const INTERNAL_NODE_NUM_KEYS_SIZE: usize = size_of::<u32>();
@@ -84,28 +85,52 @@ impl Node {
         Node { buffer }
     }
 
-    pub unsafe fn node_type(&self) -> NodeType {
-        let value = *(self.buffer.add(NODE_TYPE_OFFSET) as *const u8);
-        NodeType::from(value)
+    fn get_buffer(&self) -> &[u8] {
+        unsafe { std::slice::from_raw_parts(self.buffer, PAGE_SIZE) }
     }
 
-    unsafe fn set_node_type(&mut self, node_type: NodeType) {
-        let value = u8::from(node_type);
-        *(self.buffer.add(NODE_TYPE_OFFSET) as *mut u8) = value;
+    fn get_buffer_mut(&mut self) -> &mut [u8] {
+        unsafe { std::slice::from_raw_parts_mut(self.buffer, PAGE_SIZE) }
     }
 
-    unsafe fn is_root(&self) -> bool {
-        let value = *(self.buffer.add(IS_ROOT_OFFSET) as *const u8);
-        value != 0
+    pub fn node_type(&self) -> NodeType {
+        let buffer = self.get_buffer();
+        let header: NodeHeader = bincode::deserialize(buffer).unwrap();
+        NodeType::from(header.r#type)
     }
 
-    pub unsafe fn set_root(&mut self, is_root: bool) {
+    fn set_node_type(&mut self, node_type: NodeType) {
+        let buffer = self.get_buffer_mut();
+        let mut header: NodeHeader = bincode::deserialize(buffer).unwrap();
+        header.r#type = u8::from(node_type);
+        bincode::serialize_into(buffer, &header).unwrap();
+    }
+
+    fn is_root(&self) -> bool {
+        let buffer = self.get_buffer();
+        let header: NodeHeader = bincode::deserialize(buffer).unwrap();
+        header.is_root != 0
+    }
+
+    pub fn set_root(&mut self, is_root: bool) {
+        let buffer = self.get_buffer_mut();
         let value = if is_root { 1 } else { 0 };
-        *(self.buffer.add(IS_ROOT_OFFSET) as *mut u8) = value;
+        let mut header: NodeHeader = bincode::deserialize(buffer).unwrap();
+        header.is_root = value;
+        bincode::serialize_into(buffer, &header).unwrap();
     }
 
-    unsafe fn parent(&mut self) -> *mut u32 {
-        self.buffer.add(PARENT_POINTER_OFFSET) as *mut u32
+    fn parent(&self) -> u32 {
+        let buffer = self.get_buffer();
+        let header: NodeHeader = bincode::deserialize(buffer).unwrap();
+        header.parent
+    }
+
+    fn set_parent(&mut self, parent: u32) {
+        let buffer = self.get_buffer_mut();
+        let mut header: NodeHeader = bincode::deserialize(buffer).unwrap();
+        header.parent = parent;
+        bincode::serialize_into(buffer, &header).unwrap();
     }
 
     unsafe fn get_node_max_key(&self) -> u32 {
@@ -232,8 +257,8 @@ unsafe fn create_new_root(table: &mut Table, right_child_page_num: u32) {
     let left_child_max_key = left_child.get_node_max_key();
     *internal_node_key(root.buffer, 0) = left_child_max_key;
     *internal_node_right_child(root.buffer) = right_child_page_num;
-    *left_child.parent() = table.root_page_num;
-    *right_child.parent() = table.root_page_num;
+    left_child.set_parent(table.root_page_num);
+    right_child.set_parent(table.root_page_num);
 }
 
 unsafe fn update_internal_node_key(node: *mut u8, old_key: u32, new_key: u32) {
@@ -328,12 +353,12 @@ unsafe fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row)
     // Update parent or create a new parent.
     let table = &mut *cursor.table;
     let pager = &mut table.pager;
-    let mut old_node = pager.get_page(cursor.page_num as usize);
+    let old_node = pager.get_page(cursor.page_num as usize);
     let old_max = old_node.get_node_max_key();
     let new_page_num = pager.get_unused_page_num();
     let mut new_node = pager.get_page(new_page_num as usize);
     initialize_leaf_node(new_node.buffer);
-    *new_node.parent() = *old_node.parent();
+    new_node.set_parent(old_node.parent());
     *leaf_node_next_leaf(new_node.buffer) = *leaf_node_next_leaf(old_node.buffer);
     *leaf_node_next_leaf(old_node.buffer) = new_page_num;
 
@@ -377,7 +402,7 @@ unsafe fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row)
     if old_node.is_root() {
         create_new_root(&mut *cursor.table, new_page_num);
     } else {
-        let parent_page_num = *old_node.parent();
+        let parent_page_num = old_node.parent();
         let new_max = old_node.get_node_max_key();
         let parent = (&mut *cursor.table)
             .pager
