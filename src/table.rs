@@ -1,6 +1,6 @@
-use crate::node::{internal_node_find, leaf_node_find, LeafNode, Node, NodeType};
-use crate::pager::{Pager, TABLE_MAX_PAGES};
-use libc::{close, EXIT_FAILURE};
+use crate::node::{internal_node_find, leaf_node_find, InternalNode, LeafNode, Node, NodeType};
+use crate::pager::{Pager, PAGE_SIZE, TABLE_MAX_PAGES};
+use libc::{c_void, close, memcpy, EXIT_FAILURE};
 use std::process::exit;
 use std::ptr::null_mut;
 
@@ -78,6 +78,39 @@ impl Table {
                 pager.pages[i] = null_mut();
             }
         }
+    }
+
+    // Handle splitting the root.
+    // Old root copied to new page, becomes the left child.
+    // Address of right child passed in.
+    // Re-initialize root page to contain the new root node.
+    // New root node points to two children.
+    pub(crate) unsafe fn create_new_root(&mut self, right_child_page_num: u32) {
+        let pager = &mut self.pager;
+        let mut root = pager.get_page(self.root_page_num as usize);
+        let mut right_child = pager.get_page(right_child_page_num as usize);
+        let left_child_page_num = pager.get_unused_page_num();
+        let mut left_child = pager.get_page(left_child_page_num as usize);
+
+        // Left child has data copied from old root
+        memcpy(
+            left_child.buffer as *mut c_void,
+            root.buffer as *mut c_void,
+            PAGE_SIZE,
+        );
+        left_child.set_root(false);
+
+        // Root node is a new internal node with one key and two children
+        let mut root_internal_node = InternalNode::new(root.buffer);
+        root_internal_node.initialize();
+        root.set_root(true);
+        root_internal_node.set_num_keys(1);
+        root_internal_node.set_child(0, left_child_page_num);
+        let left_child_max_key = left_child.get_node_max_key();
+        root_internal_node.set_key(0, left_child_max_key);
+        root_internal_node.set_right_child(right_child_page_num);
+        left_child.set_parent(self.root_page_num);
+        right_child.set_parent(self.root_page_num);
     }
 }
 

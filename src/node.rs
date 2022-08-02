@@ -126,14 +126,14 @@ impl Node {
         header.parent
     }
 
-    fn set_parent(&mut self, parent: u32) {
+    pub(crate) fn set_parent(&mut self, parent: u32) {
         let buffer = self.get_buffer_mut();
         let mut header: NodeHeader = bincode::deserialize(buffer).unwrap();
         header.parent = parent;
         bincode::serialize_into(buffer, &header).unwrap();
     }
 
-    unsafe fn get_node_max_key(&self) -> u32 {
+    pub(crate) unsafe fn get_node_max_key(&self) -> u32 {
         match self.node_type() {
             NodeType::Internal => {
                 let internal_node = InternalNode::new(self.buffer);
@@ -157,7 +157,7 @@ impl InternalNode {
     }
 
     // TODO: this should just be part of the new or from method
-    unsafe fn initialize(&mut self) {
+    pub unsafe fn initialize(&mut self) {
         let mut node = Node::new(self.buffer);
         node.set_node_type(NodeType::Internal);
         node.set_root(false);
@@ -230,12 +230,38 @@ impl InternalNode {
         *(internal_node_cell.add(INTERNAL_NODE_CHILD_SIZE))
     }
 
-    unsafe fn set_key(&mut self, key_num: u32, key: u32) {
+    pub unsafe fn set_key(&mut self, key_num: u32, key: u32) {
         let internal_node_cell = self
             .buffer
             .add(INTERNAL_NODE_HEADER_SIZE + key_num as usize * INTERNAL_NODE_CELL_SIZE)
             as *mut u32;
         *(internal_node_cell.add(INTERNAL_NODE_CHILD_SIZE)) = key;
+    }
+
+    /// Returns the index of the child which should contain the given key.
+    unsafe fn find_child(&self, key: u32) -> u32 {
+        let num_keys = self.num_keys();
+
+        // binary search
+        let mut min_index = 0;
+        let mut max_index = num_keys; // there is one more child than key
+
+        while min_index != max_index {
+            let index = (min_index + max_index) / 2;
+            let key_to_right = self.key(index);
+            if key_to_right >= key {
+                max_index = index;
+            } else {
+                min_index = index + 1;
+            }
+        }
+
+        min_index
+    }
+
+    unsafe fn update_key(&mut self, old_key: u32, new_key: u32) {
+        let old_child_index = self.find_child(old_key);
+        self.set_key(old_child_index, new_key);
     }
 }
 
@@ -292,76 +318,15 @@ impl LeafNode {
     }
 }
 
-/// Returns the index of the child which should contain the given key.
-unsafe fn internal_node_find_child(node: *mut u8, key: u32) -> u32 {
-    let internal_node = InternalNode::new(node);
-    let num_keys = internal_node.num_keys();
-
-    // binary search
-    let mut min_index = 0;
-    let mut max_index = num_keys; // there is one more child than key
-
-    while min_index != max_index {
-        let index = (min_index + max_index) / 2;
-        let key_to_right = internal_node.key(index);
-        if key_to_right >= key {
-            max_index = index;
-        } else {
-            min_index = index + 1;
-        }
-    }
-
-    min_index
-}
-
-// Handle splitting the root.
-// Old root copied to new page, becomes the left child.
-// Address of right child passed in.
-// Re-initialize root page to contain the new root node.
-// New root node points to two children.
-unsafe fn create_new_root(table: &mut Table, right_child_page_num: u32) {
-    let pager = &mut table.pager;
-    let mut root = pager.get_page(table.root_page_num as usize);
-    let mut right_child = pager.get_page(right_child_page_num as usize);
-    let left_child_page_num = pager.get_unused_page_num();
-    let mut left_child = pager.get_page(left_child_page_num as usize);
-
-    // Left child has data copied from old root
-    memcpy(
-        left_child.buffer as *mut c_void,
-        root.buffer as *mut c_void,
-        PAGE_SIZE,
-    );
-    left_child.set_root(false);
-
-    // Root node is a new internal node with one key and two children
-    let mut root_internal_node = InternalNode::new(root.buffer);
-    root_internal_node.initialize();
-    root.set_root(true);
-    root_internal_node.set_num_keys(1);
-    root_internal_node.set_child(0, left_child_page_num);
-    let left_child_max_key = left_child.get_node_max_key();
-    root_internal_node.set_key(0, left_child_max_key);
-    root_internal_node.set_right_child(right_child_page_num);
-    left_child.set_parent(table.root_page_num);
-    right_child.set_parent(table.root_page_num);
-}
-
-unsafe fn update_internal_node_key(node: *mut u8, old_key: u32, new_key: u32) {
-    let mut internal_node = InternalNode::new(node);
-    let old_child_index = internal_node_find_child(node, old_key);
-    internal_node.set_key(old_child_index, new_key);
-}
-
 /// Add a child/key pair to parent that corresponds to child.
 unsafe fn internal_node_insert(table: &mut Table, parent_page_num: u32, child_page_num: u32) {
     let pager = &mut table.pager;
     let parent = pager.get_page(parent_page_num as usize);
     let child = pager.get_page(child_page_num as usize);
     let child_max_key = child.get_node_max_key();
-    let index = internal_node_find_child(parent.buffer, child_max_key);
-
     let mut parent_internal_node = InternalNode::new(parent.buffer);
+
+    let index = parent_internal_node.find_child(child_max_key);
     let original_num_keys = parent_internal_node.num_keys();
     parent_internal_node.set_num_keys(original_num_keys + 1);
 
@@ -428,7 +393,7 @@ pub(crate) unsafe fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) 
 pub(crate) unsafe fn internal_node_find(table: &mut Table, page_num: u32, key: u32) -> Cursor {
     let node = table.pager.get_page(page_num as usize);
     let internal_node = InternalNode::new(node.buffer);
-    let child_index = internal_node_find_child(node.buffer, key);
+    let child_index = internal_node.find_child(key);
     let child_num = internal_node.child(child_index);
     let child = table.pager.get_page(child_num as usize);
     match child.node_type() {
@@ -492,14 +457,14 @@ unsafe fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row)
     new_leaf_node.set_num_cells(LEAF_NODE_RIGHT_SPLIT_COUNT as u32);
 
     if old_node.is_root() {
-        create_new_root(&mut *cursor.table, new_page_num);
+        (&mut *cursor.table).create_new_root(new_page_num);
     } else {
         let parent_page_num = old_node.parent();
         let new_max = old_node.get_node_max_key();
         let parent = (&mut *cursor.table)
             .pager
             .get_page(parent_page_num as usize);
-        update_internal_node_key(parent.buffer, old_max, new_max);
+        InternalNode::new(parent.buffer).update_key(old_max, new_max);
         internal_node_insert(&mut *cursor.table, parent_page_num, new_page_num);
     }
 }
