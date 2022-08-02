@@ -1,7 +1,4 @@
-use crate::node::{
-    initialize_leaf_node, internal_node_find, leaf_node_find, leaf_node_next_leaf,
-    leaf_node_num_cells, leaf_node_value, Node, NodeType,
-};
+use crate::node::{internal_node_find, leaf_node_find, LeafNode, Node, NodeType};
 use crate::pager::{Pager, TABLE_MAX_PAGES};
 use libc::{close, EXIT_FAILURE};
 use std::process::exit;
@@ -30,7 +27,8 @@ impl Table {
         let mut cursor = self.find(0);
         let page_num = cursor.page_num as usize;
         let node = self.pager.get_page(page_num);
-        let num_cells = leaf_node_num_cells(node.buffer);
+        let leaf_node = LeafNode::new(node.buffer);
+        let num_cells = leaf_node.num_cells();
         cursor.end_of_table = num_cells == 0;
         cursor
     }
@@ -41,7 +39,8 @@ impl Table {
             if pager.num_pages == 0 {
                 // New database file. Initialize page 0 as leaf node.
                 let root_node = pager.get_page(0);
-                initialize_leaf_node(root_node.buffer);
+                let mut leaf_node = LeafNode::new(root_node.buffer);
+                leaf_node.initialize();
                 let mut root_node = Node::new(root_node.buffer);
                 root_node.set_root(true);
             }
@@ -93,7 +92,7 @@ pub struct Cursor {
 impl Cursor {
     pub unsafe fn value(&mut self) -> *mut u8 {
         let page = (*self.table).pager.get_page(self.page_num as usize);
-        leaf_node_value(page.buffer, self.cell_num)
+        LeafNode::new(page.buffer).value(self.cell_num)
     }
 
     pub unsafe fn advance(&mut self) {
@@ -101,9 +100,10 @@ impl Cursor {
         let node = (&mut *self.table).pager.get_page(page_num as usize);
 
         self.cell_num += 1;
-        if self.cell_num >= leaf_node_num_cells(node.buffer) {
+        let leaf_node = LeafNode::new(node.buffer);
+        if self.cell_num >= leaf_node.num_cells() {
             // Advance to next leaf node
-            let next_page_num = leaf_node_next_leaf(node.buffer);
+            let next_page_num = leaf_node.next_leaf();
             if next_page_num == 0 {
                 // This was the rightmost leaf
                 self.end_of_table = true;

@@ -139,7 +139,10 @@ impl Node {
                 let internal_node = InternalNode::new(self.buffer);
                 internal_node.key(InternalNode::new(self.buffer).num_keys() - 1)
             }
-            NodeType::Leaf => leaf_node_key(self.buffer, leaf_node_num_cells(self.buffer) - 1),
+            NodeType::Leaf => {
+                let leaf_node = LeafNode::new(self.buffer);
+                leaf_node.key(leaf_node.num_cells() - 1)
+            }
         }
     }
 }
@@ -236,46 +239,57 @@ impl InternalNode {
     }
 }
 
-pub unsafe fn leaf_node_num_cells(node: *mut u8) -> u32 {
-    *(node.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32)
+pub struct LeafNode {
+    pub buffer: *mut u8,
 }
 
-pub unsafe fn set_leaf_node_num_cells(node: *mut u8, num_cells: u32) {
-    *(node.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32) = num_cells;
-}
+impl LeafNode {
+    pub fn new(buffer: *mut u8) -> LeafNode {
+        LeafNode { buffer }
+    }
 
-/// Get the pointer to the leaf node cell.
-unsafe fn leaf_node_cell(node: *mut u8, cell_num: u32) -> *mut u8 {
-    node.add(LEAF_NODE_HEADER_SIZE + cell_num as usize * LEAF_NODE_CELL_SIZE)
-}
+    pub unsafe fn num_cells(&self) -> u32 {
+        *(self.buffer.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32)
+    }
 
-pub unsafe fn leaf_node_key(node: *mut u8, cell_num: u32) -> u32 {
-    *(leaf_node_cell(node, cell_num) as *mut u32)
-}
+    pub unsafe fn set_num_cells(&mut self, num_cells: u32) {
+        *(self.buffer.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32) = num_cells;
+    }
 
-pub unsafe fn set_leaf_node_key(node: *mut u8, cell_num: u32, key: u32) {
-    *(leaf_node_cell(node, cell_num) as *mut u32) = key;
-}
+    /// Get the pointer to the leaf node cell.
+    unsafe fn cell(&self, cell_num: u32) -> *mut u8 {
+        self.buffer
+            .add(LEAF_NODE_HEADER_SIZE + cell_num as usize * LEAF_NODE_CELL_SIZE)
+    }
 
-/// Get the pointer to the leaf node value.
-pub unsafe fn leaf_node_value<'a>(node: *mut u8, cell_num: u32) -> *mut u8 {
-    leaf_node_cell(node, cell_num).add(LEAF_NODE_KEY_SIZE)
-}
+    pub unsafe fn key(&self, cell_num: u32) -> u32 {
+        *(self.cell(cell_num) as *mut u32)
+    }
 
-pub unsafe fn leaf_node_next_leaf(node: *mut u8) -> u32 {
-    *(node.add(LEAF_NODE_NEXT_LEAF_OFFSET) as *mut u32)
-}
+    pub unsafe fn set_key(&mut self, cell_num: u32, key: u32) {
+        *(self.cell(cell_num) as *mut u32) = key;
+    }
 
-pub unsafe fn set_leaf_node_next_leaf(node: *mut u8, next_leaf: u32) {
-    *(node.add(LEAF_NODE_NEXT_LEAF_OFFSET) as *mut u32) = next_leaf;
-}
+    /// Get the pointer to the leaf node value.
+    pub unsafe fn value(&mut self, cell_num: u32) -> *mut u8 {
+        self.cell(cell_num).add(LEAF_NODE_KEY_SIZE)
+    }
 
-pub(crate) unsafe fn initialize_leaf_node(buffer: *mut u8) {
-    let mut node = Node::new(buffer);
-    node.set_node_type(NodeType::Leaf);
-    node.set_root(false);
-    set_leaf_node_num_cells(buffer, 0);
-    set_leaf_node_next_leaf(buffer, 0); // 0 represents no sibling
+    pub unsafe fn next_leaf(&self) -> u32 {
+        *(self.buffer.add(LEAF_NODE_NEXT_LEAF_OFFSET) as *mut u32)
+    }
+
+    pub unsafe fn set_next_leaf(&mut self, next_leaf: u32) {
+        *(self.buffer.add(LEAF_NODE_NEXT_LEAF_OFFSET) as *mut u32) = next_leaf;
+    }
+
+    pub unsafe fn initialize(&mut self) {
+        let mut node = Node::new(self.buffer);
+        node.set_node_type(NodeType::Leaf);
+        node.set_root(false);
+        self.set_num_cells(0);
+        self.set_next_leaf(0); // 0 represents no sibling
+    }
 }
 
 /// Returns the index of the child which should contain the given key.
@@ -381,7 +395,8 @@ unsafe fn internal_node_insert(table: &mut Table, parent_page_num: u32, child_pa
 
 pub(crate) unsafe fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) -> Cursor {
     let node = table.pager.get_page(page_num as usize);
-    let num_cells = leaf_node_num_cells(node.buffer);
+    let leaf_node = LeafNode::new(node.buffer);
+    let num_cells = leaf_node.num_cells();
 
     let mut cursor = Cursor {
         table,
@@ -395,7 +410,7 @@ pub(crate) unsafe fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) 
     let mut one_past_max_index = num_cells;
     while one_past_max_index != min_index {
         let index = (min_index + one_past_max_index) / 2;
-        let key_at_index = leaf_node_key(node.buffer, index);
+        let key_at_index = leaf_node.key(index);
         if key == key_at_index {
             cursor.cell_num = index;
             return cursor;
@@ -429,13 +444,16 @@ unsafe fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row)
     let table = &mut *cursor.table;
     let pager = &mut table.pager;
     let old_node = pager.get_page(cursor.page_num as usize);
+    let mut old_leaf_node = LeafNode::new(old_node.buffer);
     let old_max = old_node.get_node_max_key();
     let new_page_num = pager.get_unused_page_num();
     let mut new_node = pager.get_page(new_page_num as usize);
-    initialize_leaf_node(new_node.buffer);
+    let mut new_leaf_node = LeafNode::new(new_node.buffer);
+
+    new_leaf_node.initialize();
     new_node.set_parent(old_node.parent());
-    set_leaf_node_next_leaf(new_node.buffer, leaf_node_next_leaf(old_node.buffer));
-    set_leaf_node_next_leaf(old_node.buffer, new_page_num);
+    new_leaf_node.set_next_leaf(old_leaf_node.next_leaf());
+    old_leaf_node.set_next_leaf(new_page_num);
 
     // All existing keys plus new key should be divided
     // evenly between old (left) and new (right) nodes.
@@ -447,32 +465,31 @@ unsafe fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row)
             old_node.buffer
         };
         let index_within_node = i % LEAF_NODE_LEFT_SPLIT_COUNT as i32;
-        let destination = leaf_node_cell(destination_node, index_within_node as u32);
+        let mut destination_leaf_node = LeafNode::new(destination_node);
+        let destination = destination_leaf_node.cell(index_within_node as u32);
+        let old_leaf_node = LeafNode::new(old_node.buffer);
 
         if i == cursor.cell_num as i32 {
-            serialize_row(
-                value,
-                leaf_node_value(destination_node, index_within_node as u32),
-            );
-            set_leaf_node_key(destination_node, index_within_node as u32, key);
+            serialize_row(value, destination_leaf_node.value(index_within_node as u32));
+            destination_leaf_node.set_key(index_within_node as u32, key);
         } else if i > cursor.cell_num as i32 {
             memcpy(
                 destination as *mut c_void,
-                leaf_node_cell(old_node.buffer, (i - 1) as u32) as *mut c_void,
+                old_leaf_node.cell((i - 1) as u32) as *mut c_void,
                 LEAF_NODE_CELL_SIZE,
             );
         } else {
             memcpy(
                 destination as *mut c_void,
-                leaf_node_cell(old_node.buffer, i as u32) as *mut c_void,
+                old_leaf_node.cell(i as u32) as *mut c_void,
                 LEAF_NODE_CELL_SIZE,
             );
         }
     }
 
     // Update cell count on both leaf nodes
-    set_leaf_node_num_cells(old_node.buffer, LEAF_NODE_LEFT_SPLIT_COUNT as u32);
-    set_leaf_node_num_cells(new_node.buffer, LEAF_NODE_RIGHT_SPLIT_COUNT as u32);
+    LeafNode::new(old_node.buffer).set_num_cells(LEAF_NODE_LEFT_SPLIT_COUNT as u32);
+    new_leaf_node.set_num_cells(LEAF_NODE_RIGHT_SPLIT_COUNT as u32);
 
     if old_node.is_root() {
         create_new_root(&mut *cursor.table, new_page_num);
@@ -492,7 +509,8 @@ pub(crate) unsafe fn leaf_node_insert(cursor: &mut Cursor, key: u32, value: &Row
         .pager
         .get_page(cursor.page_num as usize);
 
-    let num_cells = leaf_node_num_cells(node.buffer);
+    let mut leaf_node = LeafNode::new(node.buffer);
+    let num_cells = leaf_node.num_cells();
     if num_cells >= LEAF_NODE_MAX_CELLS as u32 {
         // Node full
         leaf_node_split_and_insert(cursor, key, value);
@@ -503,14 +521,14 @@ pub(crate) unsafe fn leaf_node_insert(cursor: &mut Cursor, key: u32, value: &Row
         // Make room for new cell
         for i in (cursor.cell_num + 1..=num_cells).rev() {
             memcpy(
-                leaf_node_cell(node.buffer, i) as *mut c_void,
-                leaf_node_cell(node.buffer, i - 1) as *mut c_void,
+                leaf_node.cell(i) as *mut c_void,
+                leaf_node.cell(i - 1) as *mut c_void,
                 LEAF_NODE_CELL_SIZE,
             );
         }
     }
 
-    set_leaf_node_num_cells(node.buffer, leaf_node_num_cells(node.buffer) + 1);
-    set_leaf_node_key(node.buffer, cursor.cell_num, key);
-    serialize_row(value, leaf_node_value(node.buffer, cursor.cell_num));
+    leaf_node.set_num_cells(leaf_node.num_cells() + 1);
+    leaf_node.set_key(cursor.cell_num, key);
+    serialize_row(value, leaf_node.value(cursor.cell_num));
 }

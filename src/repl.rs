@@ -1,6 +1,6 @@
 use crate::node::{
-    leaf_node_key, leaf_node_num_cells, InternalNode, NodeType, COMMON_NODE_HEADER_SIZE,
-    LEAF_NODE_CELL_SIZE, LEAF_NODE_HEADER_SIZE, LEAF_NODE_MAX_CELLS, LEAF_NODE_SPACE_FOR_CELLS,
+    InternalNode, LeafNode, NodeType, COMMON_NODE_HEADER_SIZE, LEAF_NODE_CELL_SIZE,
+    LEAF_NODE_HEADER_SIZE, LEAF_NODE_MAX_CELLS, LEAF_NODE_SPACE_FOR_CELLS,
 };
 use crate::pager::Pager;
 use crate::serialization::ROW_SIZE;
@@ -32,12 +32,13 @@ pub unsafe fn print_tree(pager: &mut Pager, page_num: u32, indentation_level: u3
 
     match node.node_type() {
         NodeType::Leaf => {
-            let num_keys = leaf_node_num_cells(node.buffer);
+            let leaf_node = LeafNode::new(node.buffer);
+            let num_keys = leaf_node.num_cells();
             indent(indentation_level);
             println!("- leaf (size {})", num_keys);
             for i in 0..num_keys {
                 indent(indentation_level + 1);
-                println!("- {}", leaf_node_key(node.buffer, i));
+                println!("- {}", leaf_node.key(i));
             }
         }
         NodeType::Internal => {
