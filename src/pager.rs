@@ -14,7 +14,7 @@ pub struct Pager {
     pub file_descriptor: i32,
     pub file_length: u32,
     pub num_pages: u32,
-    pub pages: [*mut c_void; TABLE_MAX_PAGES],
+    pub pages: [*mut u8; TABLE_MAX_PAGES],
 }
 
 impl Pager {
@@ -75,7 +75,7 @@ impl Pager {
                 }
             }
 
-            self.pages[page_num] = page as *mut c_void;
+            self.pages[page_num] = page as *mut u8;
 
             if page_num >= self.num_pages as usize {
                 self.num_pages = page_num as u32 + 1;
@@ -102,7 +102,11 @@ impl Pager {
             exit(EXIT_FAILURE);
         }
 
-        let bytes_written = write(self.file_descriptor, self.pages[page_num], PAGE_SIZE);
+        let bytes_written = write(
+            self.file_descriptor,
+            self.pages[page_num] as *mut c_void,
+            PAGE_SIZE,
+        );
 
         if bytes_written == -1 {
             println!("Error writing");

@@ -33,42 +33,42 @@ impl Row {
     }
 }
 
-pub(crate) unsafe fn serialize_row(source: &Row, destination: *mut c_void) {
+pub(crate) unsafe fn serialize_row(source: &Row, destination: *mut u8) {
     memcpy(
-        destination.add(ID_OFFSET),
+        destination.add(ID_OFFSET) as *mut c_void,
         &source.id as *const u32 as *const c_void,
         ID_SIZE,
     );
 
     memcpy(
-        destination.add(USERNAME_OFFSET),
+        destination.add(USERNAME_OFFSET) as *mut c_void,
         &source.username as *const c_char as *const c_void,
         USERNAME_SIZE,
     );
 
     memcpy(
-        destination.add(EMAIL_OFFSET),
+        destination.add(EMAIL_OFFSET) as *mut c_void,
         &source.email as *const c_char as *const c_void,
         EMAIL_SIZE,
     );
 }
 
-pub(crate) unsafe fn deserialize_row(source: *const c_void, destination: &mut Row) {
+pub(crate) unsafe fn deserialize_row(source: *const u8, destination: &mut Row) {
     memcpy(
         &mut destination.id as *mut u32 as *mut c_void,
-        source.add(ID_OFFSET),
+        source.add(ID_OFFSET) as *const c_void,
         ID_SIZE,
     );
 
     memcpy(
         &mut destination.username as *mut c_char as *mut c_void,
-        source.add(USERNAME_OFFSET),
+        source.add(USERNAME_OFFSET) as *const c_void,
         USERNAME_SIZE,
     );
 
     memcpy(
         &mut destination.email as *mut c_char as *mut c_void,
-        source.add(EMAIL_OFFSET),
+        source.add(EMAIL_OFFSET) as *const c_void,
         EMAIL_SIZE,
     );
 }

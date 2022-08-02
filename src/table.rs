@@ -3,7 +3,7 @@ use crate::node::{
     leaf_node_num_cells, leaf_node_value, Node, NodeType,
 };
 use crate::pager::{Pager, TABLE_MAX_PAGES};
-use libc::{c_void, close, EXIT_FAILURE};
+use libc::{close, EXIT_FAILURE};
 use std::process::exit;
 use std::ptr::null_mut;
 
@@ -91,7 +91,7 @@ pub struct Cursor {
 }
 
 impl Cursor {
-    pub unsafe fn value(&mut self) -> *mut c_void {
+    pub unsafe fn value(&mut self) -> *mut u8 {
         let page = (*self.table).pager.get_page(self.page_num as usize);
         leaf_node_value(page.buffer, self.cell_num)
     }
