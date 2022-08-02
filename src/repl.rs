@@ -33,12 +33,12 @@ pub unsafe fn print_tree(pager: &mut Pager, page_num: u32, indentation_level: u3
 
     match node.node_type() {
         NodeType::Leaf => {
-            let num_keys = *leaf_node_num_cells(node.buffer);
+            let num_keys = leaf_node_num_cells(node.buffer);
             indent(indentation_level);
             println!("- leaf (size {})", num_keys);
             for i in 0..num_keys {
                 indent(indentation_level + 1);
-                println!("- {}", *leaf_node_key(node.buffer, i));
+                println!("- {}", leaf_node_key(node.buffer, i));
             }
         }
         NodeType::Internal => {

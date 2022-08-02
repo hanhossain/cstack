@@ -30,7 +30,7 @@ impl Table {
         let mut cursor = self.find(0);
         let page_num = cursor.page_num as usize;
         let node = self.pager.get_page(page_num);
-        let num_cells = *leaf_node_num_cells(node.buffer);
+        let num_cells = leaf_node_num_cells(node.buffer);
         cursor.end_of_table = num_cells == 0;
         cursor
     }
@@ -101,9 +101,9 @@ impl Cursor {
         let node = (&mut *self.table).pager.get_page(page_num as usize);
 
         self.cell_num += 1;
-        if self.cell_num >= *leaf_node_num_cells(node.buffer) {
+        if self.cell_num >= leaf_node_num_cells(node.buffer) {
             // Advance to next leaf node
-            let next_page_num = *leaf_node_next_leaf(node.buffer);
+            let next_page_num = leaf_node_next_leaf(node.buffer);
             if next_page_num == 0 {
                 // This was the rightmost leaf
                 self.end_of_table = true;
