@@ -1,4 +1,4 @@
-use crate::node::{internal_node_find, leaf_node_find, InternalNode, LeafNode, Node, NodeType};
+use crate::node::{internal_node_find, leaf_node_find, InternalNode, LeafNode, NodeType};
 use crate::pager::{Pager, PAGE_SIZE, TABLE_MAX_PAGES};
 use libc::{c_void, close, memcpy, EXIT_FAILURE};
 use std::process::exit;
@@ -41,8 +41,7 @@ impl Table {
                 let root_node = pager.get_page(0);
                 let mut leaf_node = LeafNode::new(root_node.buffer);
                 leaf_node.initialize();
-                let mut root_node = Node::new(root_node.buffer);
-                root_node.set_root(true);
+                leaf_node.node.set_root(true);
             }
             pager
         };

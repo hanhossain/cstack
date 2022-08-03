@@ -149,18 +149,21 @@ impl Node {
 
 pub struct InternalNode {
     pub buffer: *mut u8,
+    pub node: Node,
 }
 
 impl InternalNode {
     pub fn new(buffer: *mut u8) -> InternalNode {
-        InternalNode { buffer }
+        InternalNode {
+            buffer,
+            node: Node::new(buffer),
+        }
     }
 
     // TODO: this should just be part of the new or from method
     pub unsafe fn initialize(&mut self) {
-        let mut node = Node::new(self.buffer);
-        node.set_node_type(NodeType::Internal);
-        node.set_root(false);
+        self.node.set_node_type(NodeType::Internal);
+        self.node.set_root(false);
         self.set_num_keys(0);
     }
 
@@ -267,11 +270,15 @@ impl InternalNode {
 
 pub struct LeafNode {
     pub buffer: *mut u8,
+    pub node: Node,
 }
 
 impl LeafNode {
     pub fn new(buffer: *mut u8) -> LeafNode {
-        LeafNode { buffer }
+        LeafNode {
+            buffer,
+            node: Node::new(buffer),
+        }
     }
 
     pub unsafe fn num_cells(&self) -> u32 {
@@ -310,9 +317,8 @@ impl LeafNode {
     }
 
     pub unsafe fn initialize(&mut self) {
-        let mut node = Node::new(self.buffer);
-        node.set_node_type(NodeType::Leaf);
-        node.set_root(false);
+        self.node.set_node_type(NodeType::Leaf);
+        self.node.set_root(false);
         self.set_num_cells(0);
         self.set_next_leaf(0); // 0 represents no sibling
     }
