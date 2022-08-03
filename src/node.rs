@@ -81,24 +81,29 @@ pub struct CommonNode {
 }
 
 impl CommonNode {
+    /// Creates a CommonNode.
     pub fn new(buffer: *mut u8) -> CommonNode {
         CommonNode { buffer }
     }
 
+    /// Gets the buffer as a slice.
     fn get_buffer(&self) -> &[u8] {
         unsafe { std::slice::from_raw_parts(self.buffer, PAGE_SIZE) }
     }
 
+    /// Gets the buffer as a mut slice.
     fn get_buffer_mut(&mut self) -> &mut [u8] {
         unsafe { std::slice::from_raw_parts_mut(self.buffer, PAGE_SIZE) }
     }
 
+    /// Gets the node type.
     pub fn node_type(&self) -> NodeType {
         let buffer = self.get_buffer();
         let header: NodeHeader = bincode::deserialize(buffer).unwrap();
         NodeType::from(header.r#type)
     }
 
+    /// Sets the node type.
     fn set_node_type(&mut self, node_type: NodeType) {
         let buffer = self.get_buffer_mut();
         let mut header: NodeHeader = bincode::deserialize(buffer).unwrap();
@@ -106,12 +111,14 @@ impl CommonNode {
         bincode::serialize_into(buffer, &header).unwrap();
     }
 
+    /// Gets whether this node is the root.
     fn is_root(&self) -> bool {
         let buffer = self.get_buffer();
         let header: NodeHeader = bincode::deserialize(buffer).unwrap();
         header.is_root != 0
     }
 
+    /// Sets whether this node is the root.
     pub fn set_root(&mut self, is_root: bool) {
         let buffer = self.get_buffer_mut();
         let value = if is_root { 1 } else { 0 };
@@ -120,12 +127,14 @@ impl CommonNode {
         bincode::serialize_into(buffer, &header).unwrap();
     }
 
+    /// Gets the location for the parent node.
     fn parent(&self) -> u32 {
         let buffer = self.get_buffer();
         let header: NodeHeader = bincode::deserialize(buffer).unwrap();
         header.parent
     }
 
+    /// Sets the location for the parent node.
     pub(crate) fn set_parent(&mut self, parent: u32) {
         let buffer = self.get_buffer_mut();
         let mut header: NodeHeader = bincode::deserialize(buffer).unwrap();
@@ -133,6 +142,7 @@ impl CommonNode {
         bincode::serialize_into(buffer, &header).unwrap();
     }
 
+    /// Gets the max key in the node.
     pub(crate) unsafe fn get_node_max_key(&self) -> u32 {
         match self.node_type() {
             NodeType::Internal => {
@@ -153,6 +163,7 @@ pub struct InternalNode {
 }
 
 impl InternalNode {
+    /// Creates an InternalNode.
     pub fn new(buffer: *mut u8) -> InternalNode {
         InternalNode {
             buffer,
@@ -161,28 +172,34 @@ impl InternalNode {
     }
 
     // TODO: this should just be part of the new or from method
+    /// Initializes the internal node.
     pub unsafe fn initialize(&mut self) {
         self.node.set_node_type(NodeType::Internal);
         self.node.set_root(false);
         self.set_num_keys(0);
     }
 
+    /// Gets the number of keys in the node.
     pub unsafe fn num_keys(&self) -> u32 {
         *(self.buffer.add(INTERNAL_NODE_NUM_KEYS_OFFSET) as *mut u32)
     }
 
+    /// Sets the number of keys in the node;
     pub unsafe fn set_num_keys(&mut self, num_keys: u32) {
         *(self.buffer.add(INTERNAL_NODE_NUM_KEYS_OFFSET) as *mut u32) = num_keys;
     }
 
+    /// Gets the location of the right child.
     pub unsafe fn right_child(&self) -> u32 {
         *(self.buffer.add(INTERNAL_NODE_RIGHT_CHILD_OFFSET) as *mut u32)
     }
 
+    /// Sets the location of the right child.
     pub unsafe fn set_right_child(&mut self, right_child: u32) {
         *(self.buffer.add(INTERNAL_NODE_RIGHT_CHILD_OFFSET) as *mut u32) = right_child;
     }
 
+    /// Gets the location of the specific node cell.
     unsafe fn cell(&self, cell_num: u32) -> u32 {
         *(self
             .buffer
@@ -190,6 +207,7 @@ impl InternalNode {
             as *mut u32)
     }
 
+    /// Sets the location of the specific node cell.
     unsafe fn set_cell(&mut self, cell_num: u32, cell: u32) {
         *(self
             .buffer
@@ -197,6 +215,7 @@ impl InternalNode {
             as *mut u32) = cell;
     }
 
+    /// Gets the location of the specific child.
     pub unsafe fn child(&self, child_num: u32) -> u32 {
         let num_keys = self.num_keys();
         if child_num > num_keys {
@@ -211,6 +230,7 @@ impl InternalNode {
         }
     }
 
+    /// Sets the location of the specific child.
     pub unsafe fn set_child(&mut self, child_num: u32, child: u32) {
         let num_keys = self.num_keys();
         if child_num > num_keys {
@@ -281,10 +301,12 @@ impl LeafNode {
         }
     }
 
+    /// Get the number of cells currently occupied in the node.
     pub unsafe fn num_cells(&self) -> u32 {
         *(self.buffer.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32)
     }
 
+    /// Set the number of cells currently occupied in the node.
     pub unsafe fn set_num_cells(&mut self, num_cells: u32) {
         *(self.buffer.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32) = num_cells;
     }
@@ -308,10 +330,12 @@ impl LeafNode {
         self.cell(cell_num).add(LEAF_NODE_KEY_SIZE)
     }
 
+    /// Gets the location of the next leaf.
     pub unsafe fn next_leaf(&self) -> u32 {
         *(self.buffer.add(LEAF_NODE_NEXT_LEAF_OFFSET) as *mut u32)
     }
 
+    /// Sets the location of the next leaf.
     pub unsafe fn set_next_leaf(&mut self, next_leaf: u32) {
         *(self.buffer.add(LEAF_NODE_NEXT_LEAF_OFFSET) as *mut u32) = next_leaf;
     }
