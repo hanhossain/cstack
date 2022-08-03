@@ -12,21 +12,25 @@ pub enum Statement {
     Select,
 }
 
+impl TryFrom<&str> for Statement {
+    type Error = PrepareError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        if &value[..6] == "insert" {
+            unsafe { prepare_insert(value) }
+        } else if value == "select" {
+            Ok(Statement::Select)
+        } else {
+            Err(PrepareError::UnrecognizedStatement)
+        }
+    }
+}
+
 pub enum PrepareError {
     NegativeId,
     StringTooLong,
     SyntaxError,
     UnrecognizedStatement,
-}
-
-pub unsafe fn prepare_statement(input: &str) -> Result<Statement, PrepareError> {
-    if &input[..6] == "insert" {
-        prepare_insert(input)
-    } else if input == "select" {
-        Ok(Statement::Select)
-    } else {
-        Err(PrepareError::UnrecognizedStatement)
-    }
 }
 
 #[allow(temporary_cstring_as_ptr)]

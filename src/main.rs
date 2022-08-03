@@ -5,12 +5,10 @@ mod serialization;
 mod table;
 mod vm;
 
+use crate::vm::Statement;
 use repl::{print_prompt, read_input};
 use table::Table;
-use vm::{
-    do_meta_command, execute_statement, prepare_statement, ExecuteError, MetaCommandError,
-    PrepareError,
-};
+use vm::{do_meta_command, execute_statement, ExecuteError, MetaCommandError, PrepareError};
 
 fn main() {
     let filename = std::env::args()
@@ -34,7 +32,7 @@ fn main() {
                 }
             }
 
-            let statement = match prepare_statement(&input) {
+            let statement = match Statement::try_from(input.as_str()) {
                 Ok(s) => s,
                 Err(error) => match error {
                     PrepareError::NegativeId => {
