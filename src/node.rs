@@ -76,13 +76,13 @@ impl From<NodeType> for u8 {
     }
 }
 
-pub struct Node {
+pub struct CommonNode {
     pub buffer: *mut u8,
 }
 
-impl Node {
-    pub fn new(buffer: *mut u8) -> Node {
-        Node { buffer }
+impl CommonNode {
+    pub fn new(buffer: *mut u8) -> CommonNode {
+        CommonNode { buffer }
     }
 
     fn get_buffer(&self) -> &[u8] {
@@ -149,14 +149,14 @@ impl Node {
 
 pub struct InternalNode {
     pub buffer: *mut u8,
-    pub node: Node,
+    pub node: CommonNode,
 }
 
 impl InternalNode {
     pub fn new(buffer: *mut u8) -> InternalNode {
         InternalNode {
             buffer,
-            node: Node::new(buffer),
+            node: CommonNode::new(buffer),
         }
     }
 
@@ -270,14 +270,14 @@ impl InternalNode {
 
 pub struct LeafNode {
     pub buffer: *mut u8,
-    pub node: Node,
+    pub node: CommonNode,
 }
 
 impl LeafNode {
     pub fn new(buffer: *mut u8) -> LeafNode {
         LeafNode {
             buffer,
-            node: Node::new(buffer),
+            node: CommonNode::new(buffer),
         }
     }
 
