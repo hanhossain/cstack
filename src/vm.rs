@@ -7,14 +7,9 @@ use std::ffi::CString;
 use std::process::exit;
 use std::str::FromStr;
 
-pub enum StatementType {
-    Insert,
+pub enum Statement {
+    Insert(Row),
     Select,
-}
-
-pub struct Statement {
-    pub r#type: StatementType,
-    pub row_to_insert: Row, // only used by insert statement
 }
 
 pub enum PrepareError {
@@ -24,26 +19,18 @@ pub enum PrepareError {
     UnrecognizedStatement,
 }
 
-pub unsafe fn prepare_statement(
-    input: &mut String,
-    statement: &mut Statement,
-) -> Result<(), PrepareError> {
+pub unsafe fn prepare_statement(input: &str) -> Result<Statement, PrepareError> {
     if &input[..6] == "insert" {
-        prepare_insert(input, statement)
+        prepare_insert(input)
     } else if input == "select" {
-        statement.r#type = StatementType::Select;
-        Ok(())
+        Ok(Statement::Select)
     } else {
         Err(PrepareError::UnrecognizedStatement)
     }
 }
 
 #[allow(temporary_cstring_as_ptr)]
-unsafe fn prepare_insert(
-    input: &mut String,
-    statement: &mut Statement,
-) -> Result<(), PrepareError> {
-    statement.r#type = StatementType::Insert;
+unsafe fn prepare_insert(input: &str) -> Result<Statement, PrepareError> {
     let mut splitter = input.split(" ");
     let _keyword = splitter.next();
     let id_string = splitter.next();
@@ -64,17 +51,19 @@ unsafe fn prepare_insert(
         return Err(PrepareError::StringTooLong);
     }
 
-    statement.row_to_insert.id = id as u32;
+    let mut row = Row::new();
+
+    row.id = id as u32;
     strcpy(
-        statement.row_to_insert.username.as_mut_ptr(),
+        row.username.as_mut_ptr(),
         CString::new(username).unwrap().as_ptr(),
     );
     strcpy(
-        statement.row_to_insert.email.as_mut_ptr(),
+        row.email.as_mut_ptr(),
         CString::new(email).unwrap().as_ptr(),
     );
 
-    Ok(())
+    Ok(Statement::Insert(row))
 }
 
 pub enum MetaCommandError {
@@ -105,13 +94,12 @@ pub enum ExecuteError {
     DuplicateKey,
 }
 
-unsafe fn execute_insert(statement: &Statement, table: &mut Table) -> Result<(), ExecuteError> {
+unsafe fn execute_insert(row: &Row, table: &mut Table) -> Result<(), ExecuteError> {
     let node = table.pager.get_page(table.root_page_num as usize);
     let leaf_node = LeafNode::new(node.buffer);
     let num_cells = leaf_node.num_cells();
 
-    let row_to_insert = &statement.row_to_insert;
-    let key_to_insert = row_to_insert.id;
+    let key_to_insert = row.id;
     let mut cursor = table.find(key_to_insert);
 
     if cursor.cell_num < num_cells {
@@ -121,7 +109,7 @@ unsafe fn execute_insert(statement: &Statement, table: &mut Table) -> Result<(),
         }
     }
 
-    leaf_node_insert(&mut cursor, row_to_insert.id, row_to_insert);
+    leaf_node_insert(&mut cursor, row.id, row);
     Ok(())
 }
 
@@ -141,8 +129,8 @@ pub unsafe fn execute_statement(
     statement: &Statement,
     table: &mut Table,
 ) -> Result<(), ExecuteError> {
-    match statement.r#type {
-        StatementType::Insert => execute_insert(statement, table),
-        StatementType::Select => execute_select(statement, table),
+    match statement {
+        Statement::Insert(row) => execute_insert(row, table),
+        Statement::Select => execute_select(statement, table),
     }
 }

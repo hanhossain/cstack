@@ -6,11 +6,10 @@ mod table;
 mod vm;
 
 use repl::{print_prompt, read_input};
-use serialization::Row;
 use table::Table;
 use vm::{
     do_meta_command, execute_statement, prepare_statement, ExecuteError, MetaCommandError,
-    PrepareError, Statement, StatementType,
+    PrepareError,
 };
 
 fn main() {
@@ -22,7 +21,7 @@ fn main() {
 
     loop {
         print_prompt();
-        let mut input = read_input();
+        let input = read_input();
 
         unsafe {
             if input.starts_with(".") {
@@ -35,13 +34,9 @@ fn main() {
                 }
             }
 
-            let mut statement = Statement {
-                r#type: StatementType::Select,
-                row_to_insert: Row::new(),
-            };
-
-            if let Err(error) = prepare_statement(&mut input, &mut statement) {
-                match error {
+            let statement = match prepare_statement(&input) {
+                Ok(s) => s,
+                Err(error) => match error {
                     PrepareError::NegativeId => {
                         println!("ID must be positive.");
                         continue;
@@ -58,8 +53,8 @@ fn main() {
                         println!("Unrecognized keyword at start of '{}'.", input);
                         continue;
                     }
-                }
-            }
+                },
+            };
 
             match execute_statement(&statement, &mut table) {
                 Ok(_) => {
