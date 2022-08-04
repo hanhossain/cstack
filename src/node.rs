@@ -161,9 +161,15 @@ pub struct InternalNode {
     pub node: CommonNode,
 }
 
+impl From<CommonNode> for InternalNode {
+    fn from(node: CommonNode) -> Self {
+        InternalNode { node }
+    }
+}
+
 impl InternalNode {
     /// Creates an InternalNode.
-    pub fn new(buffer: *mut u8) -> InternalNode {
+    fn new(buffer: *mut u8) -> InternalNode {
         InternalNode {
             node: CommonNode::new(buffer),
         }
@@ -294,7 +300,14 @@ pub struct LeafNode {
     pub node: CommonNode,
 }
 
+impl From<CommonNode> for LeafNode {
+    fn from(node: CommonNode) -> Self {
+        LeafNode { node }
+    }
+}
+
 impl LeafNode {
+    #[deprecated]
     pub fn new(buffer: *mut u8) -> LeafNode {
         LeafNode {
             node: CommonNode::new(buffer),
@@ -355,44 +368,44 @@ unsafe fn internal_node_insert(table: &mut Table, parent_page_num: u32, child_pa
     let parent = pager.get_page(parent_page_num as usize);
     let child = pager.get_page(child_page_num as usize);
     let child_max_key = child.get_node_max_key();
-    let mut parent_internal_node = InternalNode::new(parent.buffer);
+    let mut parent = InternalNode::from(parent);
 
-    let index = parent_internal_node.find_child(child_max_key);
-    let original_num_keys = parent_internal_node.num_keys();
-    parent_internal_node.set_num_keys(original_num_keys + 1);
+    let index = parent.find_child(child_max_key);
+    let original_num_keys = parent.num_keys();
+    parent.set_num_keys(original_num_keys + 1);
 
     if original_num_keys as usize >= INTERNAL_NODE_MAX_CELLS {
         println!("Need to implement splitting internal node");
         exit(EXIT_FAILURE);
     }
 
-    let right_child_page_num = parent_internal_node.right_child();
+    let right_child_page_num = parent.right_child();
     let right_child = pager.get_page(right_child_page_num as usize);
     if child_max_key > right_child.get_node_max_key() {
         // Replace right child
-        parent_internal_node.set_child(original_num_keys, right_child_page_num);
-        parent_internal_node.set_key(original_num_keys, right_child.get_node_max_key());
-        parent_internal_node.set_right_child(child_page_num);
+        parent.set_child(original_num_keys, right_child_page_num);
+        parent.set_key(original_num_keys, right_child.get_node_max_key());
+        parent.set_right_child(child_page_num);
     } else {
         // Make room for the new cell
         for i in ((index + 1)..=original_num_keys).rev() {
-            let destination = parent_internal_node.cell(i);
-            let source = parent_internal_node.cell(i - 1);
+            let destination = parent.cell(i);
+            let source = parent.cell(i - 1);
             memcpy(
                 destination as *mut c_void,
                 source as *mut c_void,
                 INTERNAL_NODE_CELL_SIZE,
             );
         }
-        parent_internal_node.set_child(index, child_page_num);
-        parent_internal_node.set_key(index, child_max_key);
+        parent.set_child(index, child_page_num);
+        parent.set_key(index, child_max_key);
     }
 }
 
 pub(crate) unsafe fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) -> Cursor {
     let node = table.pager.get_page(page_num as usize);
-    let leaf_node = LeafNode::new(node.buffer);
-    let num_cells = leaf_node.num_cells();
+    let node = LeafNode::from(node);
+    let num_cells = node.num_cells();
 
     let mut cursor = Cursor {
         table,
@@ -406,7 +419,7 @@ pub(crate) unsafe fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) 
     let mut one_past_max_index = num_cells;
     while one_past_max_index != min_index {
         let index = (min_index + one_past_max_index) / 2;
-        let key_at_index = leaf_node.key(index);
+        let key_at_index = node.key(index);
         if key == key_at_index {
             cursor.cell_num = index;
             return cursor;
@@ -423,9 +436,9 @@ pub(crate) unsafe fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) 
 
 pub(crate) unsafe fn internal_node_find(table: &mut Table, page_num: u32, key: u32) -> Cursor {
     let node = table.pager.get_page(page_num as usize);
-    let internal_node = InternalNode::new(node.buffer);
-    let child_index = internal_node.find_child(key);
-    let child_num = internal_node.child(child_index);
+    let node = InternalNode::from(node);
+    let child_index = node.find_child(key);
+    let child_num = node.child(child_index);
     let child = table.pager.get_page(child_num as usize);
     match child.node_type() {
         NodeType::Leaf => leaf_node_find(table, child_num, key),
@@ -440,30 +453,29 @@ unsafe fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row)
     let table = &mut *cursor.table;
     let pager = &mut table.pager;
     let old_node = pager.get_page(cursor.page_num as usize);
-    let mut old_leaf_node = LeafNode::new(old_node.buffer);
-    let old_max = old_node.get_node_max_key();
+    let mut old_node = LeafNode::from(old_node);
+    let old_max = old_node.node.get_node_max_key();
     let new_page_num = pager.get_unused_page_num();
-    let mut new_node = pager.get_page(new_page_num as usize);
-    let mut new_leaf_node = LeafNode::new(new_node.buffer);
+    let new_node = pager.get_page(new_page_num as usize);
+    let mut new_node = LeafNode::from(new_node);
 
-    new_leaf_node.initialize();
-    new_node.set_parent(old_node.parent());
-    new_leaf_node.set_next_leaf(old_leaf_node.next_leaf());
-    old_leaf_node.set_next_leaf(new_page_num);
+    new_node.initialize();
+    new_node.node.set_parent(old_node.node.parent());
+    new_node.set_next_leaf(old_node.next_leaf());
+    old_node.set_next_leaf(new_page_num);
 
     // All existing keys plus new key should be divided
     // evenly between old (left) and new (right) nodes.
     // Starting from the right, move each key to correct position.
     for i in (0..=LEAF_NODE_MAX_CELLS as i32).rev() {
         let destination_node = if i >= LEAF_NODE_LEFT_SPLIT_COUNT as i32 {
-            new_node.buffer
+            new_node.node.buffer
         } else {
-            old_node.buffer
+            old_node.node.buffer
         };
         let index_within_node = i % LEAF_NODE_LEFT_SPLIT_COUNT as i32;
         let mut destination_leaf_node = LeafNode::new(destination_node);
         let destination = destination_leaf_node.cell(index_within_node as u32);
-        let old_leaf_node = LeafNode::new(old_node.buffer);
 
         if i == cursor.cell_num as i32 {
             serialize_row(value, destination_leaf_node.value(index_within_node as u32));
@@ -471,31 +483,31 @@ unsafe fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row)
         } else if i > cursor.cell_num as i32 {
             memcpy(
                 destination as *mut c_void,
-                old_leaf_node.cell((i - 1) as u32) as *mut c_void,
+                old_node.cell((i - 1) as u32) as *mut c_void,
                 LEAF_NODE_CELL_SIZE,
             );
         } else {
             memcpy(
                 destination as *mut c_void,
-                old_leaf_node.cell(i as u32) as *mut c_void,
+                old_node.cell(i as u32) as *mut c_void,
                 LEAF_NODE_CELL_SIZE,
             );
         }
     }
 
     // Update cell count on both leaf nodes
-    LeafNode::new(old_node.buffer).set_num_cells(LEAF_NODE_LEFT_SPLIT_COUNT as u32);
-    new_leaf_node.set_num_cells(LEAF_NODE_RIGHT_SPLIT_COUNT as u32);
+    old_node.set_num_cells(LEAF_NODE_LEFT_SPLIT_COUNT as u32);
+    new_node.set_num_cells(LEAF_NODE_RIGHT_SPLIT_COUNT as u32);
 
-    if old_node.is_root() {
+    if old_node.node.is_root() {
         (&mut *cursor.table).create_new_root(new_page_num);
     } else {
-        let parent_page_num = old_node.parent();
-        let new_max = old_node.get_node_max_key();
+        let parent_page_num = old_node.node.parent();
+        let new_max = old_node.node.get_node_max_key();
         let parent = (&mut *cursor.table)
             .pager
             .get_page(parent_page_num as usize);
-        InternalNode::new(parent.buffer).update_key(old_max, new_max);
+        InternalNode::from(parent).update_key(old_max, new_max);
         internal_node_insert(&mut *cursor.table, parent_page_num, new_page_num);
     }
 }

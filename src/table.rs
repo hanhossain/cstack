@@ -86,7 +86,7 @@ impl Table {
     // New root node points to two children.
     pub(crate) unsafe fn create_new_root(&mut self, right_child_page_num: u32) {
         let pager = &mut self.pager;
-        let mut root = pager.get_page(self.root_page_num as usize);
+        let root = pager.get_page(self.root_page_num as usize);
         let mut right_child = pager.get_page(right_child_page_num as usize);
         let left_child_page_num = pager.get_unused_page_num();
         let mut left_child = pager.get_page(left_child_page_num as usize);
@@ -100,14 +100,14 @@ impl Table {
         left_child.set_root(false);
 
         // Root node is a new internal node with one key and two children
-        let mut root_internal_node = InternalNode::new(root.buffer);
-        root_internal_node.initialize();
-        root.set_root(true);
-        root_internal_node.set_num_keys(1);
-        root_internal_node.set_child(0, left_child_page_num);
+        let mut root = InternalNode::from(root);
+        root.initialize();
+        root.node.set_root(true);
+        root.set_num_keys(1);
+        root.set_child(0, left_child_page_num);
         let left_child_max_key = left_child.get_node_max_key();
-        root_internal_node.set_key(0, left_child_max_key);
-        root_internal_node.set_right_child(right_child_page_num);
+        root.set_key(0, left_child_max_key);
+        root.set_right_child(right_child_page_num);
         left_child.set_parent(self.root_page_num);
         right_child.set_parent(self.root_page_num);
     }

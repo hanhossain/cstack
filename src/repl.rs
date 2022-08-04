@@ -42,7 +42,7 @@ pub unsafe fn print_tree(pager: &mut Pager, page_num: u32, indentation_level: u3
             }
         }
         NodeType::Internal => {
-            let internal_node = InternalNode::new(node.buffer);
+            let internal_node = InternalNode::from(node);
             let num_keys = internal_node.num_keys();
             indent(indentation_level);
             println!("- internal (size {})", num_keys);
