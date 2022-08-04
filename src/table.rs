@@ -52,8 +52,8 @@ impl Table {
         }
     }
 
-    pub unsafe fn close(&mut self) {
-        let pager = &mut self.pager;
+    pub unsafe fn close(mut self) {
+        let mut pager = &mut self.pager;
 
         for i in 0..pager.num_pages as usize {
             if pager.pages[i as usize].is_null() {

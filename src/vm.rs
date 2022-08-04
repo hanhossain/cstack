@@ -74,7 +74,10 @@ pub enum MetaCommandError {
     UnrecognizedCommand,
 }
 
-pub unsafe fn do_meta_command(query: &str, table: &mut Table) -> Result<(), MetaCommandError> {
+pub unsafe fn do_meta_command(
+    query: &str,
+    mut table: Table,
+) -> Result<Table, (Table, MetaCommandError)> {
     match query {
         ".exit" => {
             table.close();
@@ -83,14 +86,14 @@ pub unsafe fn do_meta_command(query: &str, table: &mut Table) -> Result<(), Meta
         ".btree" => {
             println!("Tree:");
             print_tree(&mut table.pager, 0, 0);
-            Ok(())
+            Ok(table)
         }
         ".constants" => {
             println!("Constants:");
             print_constants();
-            Ok(())
+            Ok(table)
         }
-        _ => Err(MetaCommandError::UnrecognizedCommand),
+        _ => Err((table, MetaCommandError::UnrecognizedCommand)),
     }
 }
 

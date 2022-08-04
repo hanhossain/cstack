@@ -23,9 +23,13 @@ fn main() {
 
         unsafe {
             if input.starts_with(".") {
-                match do_meta_command(&input, &mut table) {
-                    Ok(_) => continue,
-                    Err(MetaCommandError::UnrecognizedCommand) => {
+                match do_meta_command(&input, table) {
+                    Ok(t) => {
+                        table = t;
+                        continue;
+                    }
+                    Err((t, MetaCommandError::UnrecognizedCommand)) => {
+                        table = t;
                         println!("Unrecognized command '{}'", input);
                         continue;
                     }
