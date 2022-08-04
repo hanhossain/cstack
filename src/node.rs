@@ -158,7 +158,6 @@ impl CommonNode {
 }
 
 pub struct InternalNode {
-    pub buffer: *mut u8,
     pub node: CommonNode,
 }
 
@@ -166,7 +165,6 @@ impl InternalNode {
     /// Creates an InternalNode.
     pub fn new(buffer: *mut u8) -> InternalNode {
         InternalNode {
-            buffer,
             node: CommonNode::new(buffer),
         }
     }
@@ -181,27 +179,28 @@ impl InternalNode {
 
     /// Gets the number of keys in the node.
     pub unsafe fn num_keys(&self) -> u32 {
-        *(self.buffer.add(INTERNAL_NODE_NUM_KEYS_OFFSET) as *mut u32)
+        *(self.node.buffer.add(INTERNAL_NODE_NUM_KEYS_OFFSET) as *mut u32)
     }
 
     /// Sets the number of keys in the node;
     pub unsafe fn set_num_keys(&mut self, num_keys: u32) {
-        *(self.buffer.add(INTERNAL_NODE_NUM_KEYS_OFFSET) as *mut u32) = num_keys;
+        *(self.node.buffer.add(INTERNAL_NODE_NUM_KEYS_OFFSET) as *mut u32) = num_keys;
     }
 
     /// Gets the location of the right child.
     pub unsafe fn right_child(&self) -> u32 {
-        *(self.buffer.add(INTERNAL_NODE_RIGHT_CHILD_OFFSET) as *mut u32)
+        *(self.node.buffer.add(INTERNAL_NODE_RIGHT_CHILD_OFFSET) as *mut u32)
     }
 
     /// Sets the location of the right child.
     pub unsafe fn set_right_child(&mut self, right_child: u32) {
-        *(self.buffer.add(INTERNAL_NODE_RIGHT_CHILD_OFFSET) as *mut u32) = right_child;
+        *(self.node.buffer.add(INTERNAL_NODE_RIGHT_CHILD_OFFSET) as *mut u32) = right_child;
     }
 
     /// Gets the location of the specific node cell.
     unsafe fn cell(&self, cell_num: u32) -> u32 {
         *(self
+            .node
             .buffer
             .add(INTERNAL_NODE_HEADER_SIZE + cell_num as usize * INTERNAL_NODE_CELL_SIZE)
             as *mut u32)
@@ -210,6 +209,7 @@ impl InternalNode {
     /// Sets the location of the specific node cell.
     unsafe fn set_cell(&mut self, cell_num: u32, cell: u32) {
         *(self
+            .node
             .buffer
             .add(INTERNAL_NODE_HEADER_SIZE + cell_num as usize * INTERNAL_NODE_CELL_SIZE)
             as *mut u32) = cell;
@@ -247,6 +247,7 @@ impl InternalNode {
 
     pub unsafe fn key(&self, key_num: u32) -> u32 {
         let internal_node_cell = self
+            .node
             .buffer
             .add(INTERNAL_NODE_HEADER_SIZE + key_num as usize * INTERNAL_NODE_CELL_SIZE)
             as *mut u32;
@@ -255,6 +256,7 @@ impl InternalNode {
 
     pub unsafe fn set_key(&mut self, key_num: u32, key: u32) {
         let internal_node_cell = self
+            .node
             .buffer
             .add(INTERNAL_NODE_HEADER_SIZE + key_num as usize * INTERNAL_NODE_CELL_SIZE)
             as *mut u32;
@@ -289,31 +291,30 @@ impl InternalNode {
 }
 
 pub struct LeafNode {
-    pub buffer: *mut u8,
     pub node: CommonNode,
 }
 
 impl LeafNode {
     pub fn new(buffer: *mut u8) -> LeafNode {
         LeafNode {
-            buffer,
             node: CommonNode::new(buffer),
         }
     }
 
     /// Get the number of cells currently occupied in the node.
     pub unsafe fn num_cells(&self) -> u32 {
-        *(self.buffer.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32)
+        *(self.node.buffer.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32)
     }
 
     /// Set the number of cells currently occupied in the node.
     pub unsafe fn set_num_cells(&mut self, num_cells: u32) {
-        *(self.buffer.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32) = num_cells;
+        *(self.node.buffer.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32) = num_cells;
     }
 
     /// Get the pointer to the leaf node cell.
     unsafe fn cell(&self, cell_num: u32) -> *mut u8 {
-        self.buffer
+        self.node
+            .buffer
             .add(LEAF_NODE_HEADER_SIZE + cell_num as usize * LEAF_NODE_CELL_SIZE)
     }
 
@@ -332,12 +333,12 @@ impl LeafNode {
 
     /// Gets the location of the next leaf.
     pub unsafe fn next_leaf(&self) -> u32 {
-        *(self.buffer.add(LEAF_NODE_NEXT_LEAF_OFFSET) as *mut u32)
+        *(self.node.buffer.add(LEAF_NODE_NEXT_LEAF_OFFSET) as *mut u32)
     }
 
     /// Sets the location of the next leaf.
     pub unsafe fn set_next_leaf(&mut self, next_leaf: u32) {
-        *(self.buffer.add(LEAF_NODE_NEXT_LEAF_OFFSET) as *mut u32) = next_leaf;
+        *(self.node.buffer.add(LEAF_NODE_NEXT_LEAF_OFFSET) as *mut u32) = next_leaf;
     }
 
     pub unsafe fn initialize(&mut self) {
