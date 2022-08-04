@@ -27,8 +27,8 @@ impl Table {
         let mut cursor = self.find(0);
         let page_num = cursor.page_num as usize;
         let node = self.pager.get_page(page_num);
-        let leaf_node = LeafNode::new(node.buffer);
-        let num_cells = leaf_node.num_cells();
+        let node = LeafNode::from(node);
+        let num_cells = node.num_cells();
         cursor.end_of_table = num_cells == 0;
         cursor
     }
@@ -39,9 +39,9 @@ impl Table {
             if pager.num_pages == 0 {
                 // New database file. Initialize page 0 as leaf node.
                 let root_node = pager.get_page(0);
-                let mut leaf_node = LeafNode::new(root_node.buffer);
-                leaf_node.initialize();
-                leaf_node.node.set_root(true);
+                let mut root_node = LeafNode::from(root_node);
+                root_node.initialize();
+                root_node.node.set_root(true);
             }
             pager
         };
@@ -124,7 +124,7 @@ pub struct Cursor {
 impl Cursor {
     pub unsafe fn value(&mut self) -> *mut u8 {
         let page = (*self.table).pager.get_page(self.page_num as usize);
-        LeafNode::new(page.buffer).value(self.cell_num)
+        LeafNode::from(page).value(self.cell_num)
     }
 
     pub unsafe fn advance(&mut self) {
@@ -132,10 +132,10 @@ impl Cursor {
         let node = (&mut *self.table).pager.get_page(page_num as usize);
 
         self.cell_num += 1;
-        let leaf_node = LeafNode::new(node.buffer);
-        if self.cell_num >= leaf_node.num_cells() {
+        let node = LeafNode::from(node);
+        if self.cell_num >= node.num_cells() {
             // Advance to next leaf node
-            let next_page_num = leaf_node.next_leaf();
+            let next_page_num = node.next_leaf();
             if next_page_num == 0 {
                 // This was the rightmost leaf
                 self.end_of_table = true;

@@ -307,8 +307,7 @@ impl From<CommonNode> for LeafNode {
 }
 
 impl LeafNode {
-    #[deprecated]
-    pub fn new(buffer: *mut u8) -> LeafNode {
+    fn new(buffer: *mut u8) -> LeafNode {
         LeafNode {
             node: CommonNode::new(buffer),
         }
@@ -469,17 +468,16 @@ unsafe fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row)
     // Starting from the right, move each key to correct position.
     for i in (0..=LEAF_NODE_MAX_CELLS as i32).rev() {
         let destination_node = if i >= LEAF_NODE_LEFT_SPLIT_COUNT as i32 {
-            new_node.node.buffer
+            &mut new_node
         } else {
-            old_node.node.buffer
+            &mut old_node
         };
         let index_within_node = i % LEAF_NODE_LEFT_SPLIT_COUNT as i32;
-        let mut destination_leaf_node = LeafNode::new(destination_node);
-        let destination = destination_leaf_node.cell(index_within_node as u32);
+        let destination = destination_node.cell(index_within_node as u32);
 
         if i == cursor.cell_num as i32 {
-            serialize_row(value, destination_leaf_node.value(index_within_node as u32));
-            destination_leaf_node.set_key(index_within_node as u32, key);
+            serialize_row(value, destination_node.value(index_within_node as u32));
+            destination_node.set_key(index_within_node as u32, key);
         } else if i > cursor.cell_num as i32 {
             memcpy(
                 destination as *mut c_void,
@@ -517,8 +515,8 @@ pub(crate) unsafe fn leaf_node_insert(cursor: &mut Cursor, key: u32, value: &Row
         .pager
         .get_page(cursor.page_num as usize);
 
-    let mut leaf_node = LeafNode::new(node.buffer);
-    let num_cells = leaf_node.num_cells();
+    let mut node = LeafNode::from(node);
+    let num_cells = node.num_cells();
     if num_cells >= LEAF_NODE_MAX_CELLS as u32 {
         // Node full
         leaf_node_split_and_insert(cursor, key, value);
@@ -529,14 +527,14 @@ pub(crate) unsafe fn leaf_node_insert(cursor: &mut Cursor, key: u32, value: &Row
         // Make room for new cell
         for i in (cursor.cell_num + 1..=num_cells).rev() {
             memcpy(
-                leaf_node.cell(i) as *mut c_void,
-                leaf_node.cell(i - 1) as *mut c_void,
+                node.cell(i) as *mut c_void,
+                node.cell(i - 1) as *mut c_void,
                 LEAF_NODE_CELL_SIZE,
             );
         }
     }
 
-    leaf_node.set_num_cells(leaf_node.num_cells() + 1);
-    leaf_node.set_key(cursor.cell_num, key);
-    serialize_row(value, leaf_node.value(cursor.cell_num));
+    node.set_num_cells(node.num_cells() + 1);
+    node.set_key(cursor.cell_num, key);
+    serialize_row(value, node.value(cursor.cell_num));
 }
