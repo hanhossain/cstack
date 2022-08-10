@@ -1,4 +1,4 @@
-use crate::node::{internal_node_find, leaf_node_find, InternalNode, LeafNode, Node};
+use crate::node::{internal_node_find, leaf_node_find, InternalNode, Node};
 use crate::pager::{Pager, PAGE_SIZE, TABLE_MAX_PAGES};
 use libc::{c_void, close, memcpy, EXIT_FAILURE};
 use std::process::exit;
@@ -37,9 +37,7 @@ impl Table {
             let mut pager = Pager::open(filename);
             if pager.num_pages == 0 {
                 // New database file. Initialize page 0 as leaf node.
-                let root_node = pager.get_page(0);
-                let mut root_node = LeafNode::from(root_node);
-                root_node.initialize();
+                let mut root_node = pager.new_leaf_page(0);
                 root_node.node.set_root(true);
             }
             pager
@@ -85,12 +83,18 @@ impl Table {
     // New root node points to two children.
     pub(crate) unsafe fn create_new_root(&mut self, right_child_page_num: u32) {
         let pager = &mut self.pager;
+
+        // get old root page
         let root = pager.get_page(self.root_page_num as usize);
+
+        // get right child page
         let mut right_child = pager.get_page(right_child_page_num as usize);
+
+        // get an unused page for the left child
         let left_child_page_num = pager.get_unused_page_num();
         let mut left_child = pager.get_page(left_child_page_num as usize);
 
-        // Left child has data copied from old root
+        // Copy data from old root to left child
         memcpy(
             left_child.buffer as *mut c_void,
             root.buffer as *mut c_void,
@@ -98,7 +102,7 @@ impl Table {
         );
         left_child.set_root(false);
 
-        // Root node is a new internal node with one key and two children
+        // Create a new root node as an internal node with one key and two children
         let mut root = InternalNode::from(root);
         root.initialize();
         root.node.set_root(true);

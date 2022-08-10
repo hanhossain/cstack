@@ -489,10 +489,7 @@ unsafe fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row)
     let mut old_node = pager.page(cursor.page_num as usize).unwrap_leaf();
     let old_max = old_node.node.get_node_max_key();
     let new_page_num = pager.get_unused_page_num();
-    let new_node = pager.get_page(new_page_num as usize);
-    let mut new_node = LeafNode::from(new_node);
-
-    new_node.initialize();
+    let mut new_node = pager.new_leaf_page(new_page_num as usize);
     new_node.node.set_parent(old_node.node.parent());
     new_node.set_next_leaf(old_node.next_leaf());
     old_node.set_next_leaf(new_page_num);
