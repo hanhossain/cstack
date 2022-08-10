@@ -4,7 +4,7 @@ use libc::{c_void, memcpy};
 
 pub struct Table {
     pub pager: Pager,
-    pub root_page_num: u32,
+    root_page_num: u32,
 }
 
 impl Table {
@@ -90,6 +90,7 @@ impl Table {
     }
 }
 
+/// Leaf node iterator
 pub struct Cursor {
     pub table: *mut Table,
     pub page_num: u32,
