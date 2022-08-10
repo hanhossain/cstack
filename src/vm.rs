@@ -1,4 +1,4 @@
-use crate::node::{leaf_node_insert, LeafNode};
+use crate::node::leaf_node_insert;
 use crate::repl::{print_constants, print_tree};
 use crate::serialization::{deserialize_row, Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE};
 use crate::table::Table;
@@ -102,14 +102,13 @@ pub enum ExecuteError {
 }
 
 unsafe fn execute_insert(row: &Row, table: &mut Table) -> Result<(), ExecuteError> {
-    let node = table.pager.get_page(table.root_page_num as usize);
-    let node = LeafNode::from(node);
-    let num_cells = node.num_cells();
-
     let key_to_insert = row.id;
     let mut cursor = table.find(key_to_insert);
 
-    if cursor.cell_num < num_cells {
+    // The cursor will always point to a leaf node.
+    let node = table.pager.page(cursor.page_num as usize).unwrap_leaf();
+
+    if cursor.cell_num < node.num_cells() {
         let key_at_index = node.key(cursor.cell_num);
         if key_at_index == key_to_insert {
             return Err(ExecuteError::DuplicateKey);

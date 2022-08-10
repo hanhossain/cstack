@@ -18,6 +18,8 @@ struct NodeHeader {
 }
 
 // Internal Node Header Layout
+//
+// | common header | num keys | right child |
 const INTERNAL_NODE_NUM_KEYS_SIZE: usize = size_of::<u32>();
 const INTERNAL_NODE_NUM_KEYS_OFFSET: usize = COMMON_NODE_HEADER_SIZE;
 const INTERNAL_NODE_RIGHT_CHILD_SIZE: usize = size_of::<u32>();
@@ -32,6 +34,8 @@ const INTERNAL_NODE_CHILD_SIZE: usize = size_of::<u32>();
 const INTERNAL_NODE_CELL_SIZE: usize = INTERNAL_NODE_CHILD_SIZE + INTERNAL_NODE_KEY_SIZE;
 
 // Leaf Node Header Layout
+//
+// | common header | num cells | next leaf |
 const LEAF_NODE_NUM_CELLS_SIZE: usize = size_of::<u32>();
 const LEAF_NODE_NUM_CELLS_OFFSET: usize = COMMON_NODE_HEADER_SIZE;
 const LEAF_NODE_NEXT_LEAF_SIZE: usize = size_of::<u32>();
@@ -52,6 +56,7 @@ const LEAF_NODE_LEFT_SPLIT_COUNT: usize = (LEAF_NODE_MAX_CELLS + 1) - LEAF_NODE_
 // Internal Node Body Layout
 const INTERNAL_NODE_MAX_CELLS: usize = 3;
 
+#[derive(Debug)]
 pub enum NodeType {
     Internal,
     Leaf,

@@ -45,7 +45,6 @@ impl Pager {
         }
     }
 
-    // TODO: this should be get_page
     pub unsafe fn page(&mut self, page_num: usize) -> Node {
         Node::from(self.get_page(page_num))
     }
@@ -64,7 +63,7 @@ impl Pager {
         node
     }
 
-    pub unsafe fn get_page(&mut self, page_num: usize) -> CommonNode {
+    unsafe fn get_page(&mut self, page_num: usize) -> CommonNode {
         if page_num > TABLE_MAX_PAGES {
             println!("Tried to fetch page number out of bounds. {page_num} > {TABLE_MAX_PAGES}");
             exit(EXIT_FAILURE);
@@ -72,7 +71,6 @@ impl Pager {
 
         if self.pages[page_num].is_null() {
             // Cache miss. Allocate memory and load from file.
-            // let page = malloc(PAGE_SIZE);
             let page = Box::into_raw(Box::new([0u8; PAGE_SIZE]));
             let mut num_pages = self.file_length as usize / PAGE_SIZE;
 
