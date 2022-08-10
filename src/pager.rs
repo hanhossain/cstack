@@ -1,4 +1,4 @@
-use crate::node::{CommonNode, LeafNode, Node};
+use crate::node::{CommonNode, InternalNode, LeafNode, Node};
 use libc::{
     c_uint, c_void, lseek, open, read, write, EXIT_FAILURE, O_CREAT, O_RDWR, SEEK_END, SEEK_SET,
     S_IRUSR, S_IWUSR,
@@ -53,6 +53,13 @@ impl Pager {
     pub unsafe fn new_leaf_page(&mut self, page_num: usize) -> LeafNode {
         let node = self.get_page(page_num as usize);
         let mut node = LeafNode::from(node);
+        node.initialize();
+        node
+    }
+
+    pub unsafe fn new_internal_page(&mut self, page_num: usize) -> InternalNode {
+        let node = self.get_page(page_num as usize);
+        let mut node = InternalNode::from(node);
         node.initialize();
         node
     }

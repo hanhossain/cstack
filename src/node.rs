@@ -103,6 +103,34 @@ impl Node {
             Node::Leaf(node) => node,
         }
     }
+
+    pub fn buffer_mut_ptr(&mut self) -> *mut u8 {
+        match self {
+            Node::Internal(node) => node.node.buffer,
+            Node::Leaf(node) => node.node.buffer,
+        }
+    }
+
+    pub fn buffer_ptr(&self) -> *const u8 {
+        match self {
+            Node::Internal(node) => node.node.buffer,
+            Node::Leaf(node) => node.node.buffer,
+        }
+    }
+
+    pub fn set_root(&mut self, is_root: bool) {
+        match self {
+            Node::Internal(node) => node.node.set_root(is_root),
+            Node::Leaf(node) => node.node.set_root(is_root),
+        }
+    }
+
+    pub fn set_parent(&mut self, parent: u32) {
+        match self {
+            Node::Internal(node) => node.node.set_parent(parent),
+            Node::Leaf(node) => node.node.set_parent(parent),
+        }
+    }
 }
 
 impl From<CommonNode> for Node {
@@ -179,20 +207,6 @@ impl CommonNode {
         header.parent = parent;
         bincode::serialize_into(buffer, &header).unwrap();
     }
-
-    /// Gets the max key in the node.
-    pub(crate) unsafe fn get_node_max_key(&self) -> u32 {
-        match self.node_type() {
-            NodeType::Internal => {
-                let internal_node = InternalNode::new(self.buffer);
-                internal_node.key(InternalNode::new(self.buffer).num_keys() - 1)
-            }
-            NodeType::Leaf => {
-                let leaf_node = LeafNode::new(self.buffer);
-                leaf_node.key(leaf_node.num_cells() - 1)
-            }
-        }
-    }
 }
 
 pub struct InternalNode {
@@ -206,13 +220,6 @@ impl From<CommonNode> for InternalNode {
 }
 
 impl InternalNode {
-    /// Creates an InternalNode.
-    fn new(buffer: *mut u8) -> InternalNode {
-        InternalNode {
-            node: CommonNode::new(buffer),
-        }
-    }
-
     // TODO: this should just be part of the new or from method
     /// Initializes the internal node.
     pub unsafe fn initialize(&mut self) {
@@ -350,12 +357,6 @@ impl From<CommonNode> for LeafNode {
 }
 
 impl LeafNode {
-    fn new(buffer: *mut u8) -> LeafNode {
-        LeafNode {
-            node: CommonNode::new(buffer),
-        }
-    }
-
     /// Get the number of cells currently occupied in the node.
     pub unsafe fn num_cells(&self) -> u32 {
         *(self.node.buffer.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32)
