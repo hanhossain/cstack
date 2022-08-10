@@ -1,8 +1,6 @@
 use crate::node::{internal_node_find, leaf_node_find, Node};
-use crate::pager::{Pager, PAGE_SIZE, TABLE_MAX_PAGES};
-use libc::{c_void, close, memcpy, EXIT_FAILURE};
-use std::process::exit;
-use std::ptr::null_mut;
+use crate::pager::{Pager, PAGE_SIZE};
+use libc::{c_void, memcpy};
 
 pub struct Table {
     pub pager: Pager,
@@ -49,31 +47,8 @@ impl Table {
         }
     }
 
-    pub unsafe fn close(mut self) {
-        let mut pager = &mut self.pager;
-
-        for i in 0..pager.num_pages as usize {
-            if pager.pages[i as usize].is_null() {
-                continue;
-            }
-            pager.flush(i);
-            let _ = Box::from_raw(pager.pages[i]);
-            pager.pages[i] = null_mut();
-        }
-
-        let result = close(pager.file_descriptor);
-        if result == -1 {
-            println!("Error closing db file.");
-            exit(EXIT_FAILURE);
-        }
-
-        for i in 0..TABLE_MAX_PAGES {
-            let page = pager.pages[i];
-            if !page.is_null() {
-                let _ = Box::from_raw(page);
-                pager.pages[i] = null_mut();
-            }
-        }
+    pub unsafe fn close(self) {
+        self.pager.close();
     }
 
     // Handle splitting the root.

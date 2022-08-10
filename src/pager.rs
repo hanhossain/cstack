@@ -1,7 +1,7 @@
 use crate::node::{CommonNode, InternalNode, LeafNode, Node};
 use libc::{
-    c_uint, c_void, lseek, open, read, write, EXIT_FAILURE, O_CREAT, O_RDWR, SEEK_END, SEEK_SET,
-    S_IRUSR, S_IWUSR,
+    c_uint, c_void, close, lseek, open, read, write, EXIT_FAILURE, O_CREAT, O_RDWR, SEEK_END,
+    SEEK_SET, S_IRUSR, S_IWUSR,
 };
 use std::ffi::CString;
 use std::process::exit;
@@ -11,10 +11,10 @@ pub const TABLE_MAX_PAGES: usize = 100;
 pub const PAGE_SIZE: usize = 4096;
 
 pub struct Pager {
-    pub file_descriptor: i32,
-    pub file_length: u32,
+    file_descriptor: i32,
+    file_length: u32,
     pub num_pages: u32,
-    pub pages: [*mut u8; TABLE_MAX_PAGES],
+    pages: [*mut u8; TABLE_MAX_PAGES],
 }
 
 impl Pager {
@@ -42,6 +42,33 @@ impl Pager {
             file_descriptor: fd,
             num_pages: file_length as u32 / PAGE_SIZE as u32,
             pages: [null_mut(); TABLE_MAX_PAGES],
+        }
+    }
+
+    pub unsafe fn close(mut self) {
+        let mut pager = &mut self;
+
+        for i in 0..pager.num_pages as usize {
+            if pager.pages[i as usize].is_null() {
+                continue;
+            }
+            pager.flush(i);
+            let _ = Box::from_raw(pager.pages[i]);
+            pager.pages[i] = null_mut();
+        }
+
+        let result = close(pager.file_descriptor);
+        if result == -1 {
+            println!("Error closing db file.");
+            exit(EXIT_FAILURE);
+        }
+
+        for i in 0..TABLE_MAX_PAGES {
+            let page = pager.pages[i];
+            if !page.is_null() {
+                let _ = Box::from_raw(page);
+                pager.pages[i] = null_mut();
+            }
         }
     }
 
@@ -102,7 +129,7 @@ impl Pager {
         CommonNode::new(self.pages[page_num])
     }
 
-    pub unsafe fn flush(&mut self, page_num: usize) {
+    unsafe fn flush(&mut self, page_num: usize) {
         if self.pages[page_num].is_null() {
             println!("Tried to flush null page");
             exit(EXIT_FAILURE);
