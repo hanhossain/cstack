@@ -1,4 +1,4 @@
-use crate::node::{internal_node_find, leaf_node_find, InternalNode, LeafNode, NodeType};
+use crate::node::{internal_node_find, leaf_node_find, InternalNode, LeafNode, Node};
 use crate::pager::{Pager, PAGE_SIZE, TABLE_MAX_PAGES};
 use libc::{c_void, close, memcpy, EXIT_FAILURE};
 use std::process::exit;
@@ -15,19 +15,18 @@ impl Table {
     /// where it should be inserted.
     pub unsafe fn find(&mut self, key: u32) -> Cursor {
         let root_page_num = self.root_page_num;
-        let root_node = self.pager.get_page(root_page_num as usize);
+        let root_node = self.pager.page(root_page_num as usize);
 
-        match root_node.node_type() {
-            NodeType::Internal => internal_node_find(self, root_page_num, key),
-            NodeType::Leaf => leaf_node_find(self, root_page_num, key),
+        match root_node {
+            Node::Internal(_) => internal_node_find(self, root_page_num, key),
+            Node::Leaf(_) => leaf_node_find(self, root_page_num, key),
         }
     }
 
     pub unsafe fn start(&mut self) -> Cursor {
         let mut cursor = self.find(0);
         let page_num = cursor.page_num as usize;
-        let node = self.pager.get_page(page_num);
-        let node = LeafNode::from(node);
+        let node = self.pager.page(page_num).unwrap_leaf();
         let num_cells = node.num_cells();
         cursor.end_of_table = num_cells == 0;
         cursor
@@ -123,16 +122,21 @@ pub struct Cursor {
 
 impl Cursor {
     pub unsafe fn value(&mut self) -> *mut u8 {
-        let page = (*self.table).pager.get_page(self.page_num as usize);
-        LeafNode::from(page).value(self.cell_num)
+        let mut node = (*self.table)
+            .pager
+            .page(self.page_num as usize)
+            .unwrap_leaf();
+        node.value(self.cell_num)
     }
 
     pub unsafe fn advance(&mut self) {
         let page_num = self.page_num;
-        let node = (&mut *self.table).pager.get_page(page_num as usize);
+        let node = (&mut *self.table)
+            .pager
+            .page(page_num as usize)
+            .unwrap_leaf();
 
         self.cell_num += 1;
-        let node = LeafNode::from(node);
         if self.cell_num >= node.num_cells() {
             // Advance to next leaf node
             let next_page_num = node.next_leaf();

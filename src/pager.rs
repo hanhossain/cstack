@@ -1,4 +1,4 @@
-use crate::node::CommonNode;
+use crate::node::{CommonNode, Node};
 use libc::{
     c_uint, c_void, lseek, open, read, write, EXIT_FAILURE, O_CREAT, O_RDWR, SEEK_END, SEEK_SET,
     S_IRUSR, S_IWUSR,
@@ -43,6 +43,11 @@ impl Pager {
             num_pages: file_length as u32 / PAGE_SIZE as u32,
             pages: [null_mut(); TABLE_MAX_PAGES],
         }
+    }
+
+    // TODO: this should be get_page
+    pub unsafe fn page(&mut self, page_num: usize) -> Node {
+        Node::from(self.get_page(page_num))
     }
 
     pub unsafe fn get_page(&mut self, page_num: usize) -> CommonNode {

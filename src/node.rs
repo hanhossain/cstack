@@ -76,6 +76,44 @@ impl From<NodeType> for u8 {
     }
 }
 
+pub enum Node {
+    Internal(InternalNode),
+    Leaf(LeafNode),
+}
+
+impl Node {
+    /// Gets the max key in the node.
+    pub(crate) unsafe fn get_node_max_key(&self) -> u32 {
+        match self {
+            Node::Internal(node) => node.key(node.num_keys() - 1),
+            Node::Leaf(node) => node.key(node.num_cells() - 1),
+        }
+    }
+
+    pub fn unwrap_internal(self) -> InternalNode {
+        match self {
+            Node::Internal(node) => node,
+            Node::Leaf(_) => panic!("Attempted to unwrap leaf node as internal node"),
+        }
+    }
+
+    pub fn unwrap_leaf(self) -> LeafNode {
+        match self {
+            Node::Internal(_) => panic!("Attempted to unwrap internal node as leaf node"),
+            Node::Leaf(node) => node,
+        }
+    }
+}
+
+impl From<CommonNode> for Node {
+    fn from(node: CommonNode) -> Self {
+        match node.node_type() {
+            NodeType::Internal => Node::Internal(InternalNode::from(node)),
+            NodeType::Leaf => Node::Leaf(LeafNode::from(node)),
+        }
+    }
+}
+
 pub struct CommonNode {
     pub buffer: *mut u8,
 }
@@ -364,10 +402,9 @@ impl LeafNode {
 /// Add a child/key pair to parent that corresponds to child.
 unsafe fn internal_node_insert(table: &mut Table, parent_page_num: u32, child_page_num: u32) {
     let pager = &mut table.pager;
-    let parent = pager.get_page(parent_page_num as usize);
-    let child = pager.get_page(child_page_num as usize);
+    let mut parent = pager.page(parent_page_num as usize).unwrap_internal();
+    let child = pager.page(child_page_num as usize);
     let child_max_key = child.get_node_max_key();
-    let mut parent = InternalNode::from(parent);
 
     let index = parent.find_child(child_max_key);
     let original_num_keys = parent.num_keys();
@@ -379,7 +416,7 @@ unsafe fn internal_node_insert(table: &mut Table, parent_page_num: u32, child_pa
     }
 
     let right_child_page_num = parent.right_child();
-    let right_child = pager.get_page(right_child_page_num as usize);
+    let right_child = pager.page(right_child_page_num as usize);
     if child_max_key > right_child.get_node_max_key() {
         // Replace right child
         parent.set_child(original_num_keys, right_child_page_num);
@@ -402,8 +439,7 @@ unsafe fn internal_node_insert(table: &mut Table, parent_page_num: u32, child_pa
 }
 
 pub(crate) unsafe fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) -> Cursor {
-    let node = table.pager.get_page(page_num as usize);
-    let node = LeafNode::from(node);
+    let node = table.pager.page(page_num as usize).unwrap_leaf();
     let num_cells = node.num_cells();
 
     let mut cursor = Cursor {
@@ -434,14 +470,13 @@ pub(crate) unsafe fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) 
 }
 
 pub(crate) unsafe fn internal_node_find(table: &mut Table, page_num: u32, key: u32) -> Cursor {
-    let node = table.pager.get_page(page_num as usize);
-    let node = InternalNode::from(node);
+    let node = table.pager.page(page_num as usize).unwrap_internal();
     let child_index = node.find_child(key);
     let child_num = node.child(child_index);
-    let child = table.pager.get_page(child_num as usize);
-    match child.node_type() {
-        NodeType::Leaf => leaf_node_find(table, child_num, key),
-        NodeType::Internal => internal_node_find(table, child_num, key),
+    let child = table.pager.page(child_num as usize);
+    match child {
+        Node::Leaf(_) => leaf_node_find(table, child_num, key),
+        Node::Internal(_) => internal_node_find(table, child_num, key),
     }
 }
 
@@ -451,8 +486,7 @@ unsafe fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row)
     // Update parent or create a new parent.
     let table = &mut *cursor.table;
     let pager = &mut table.pager;
-    let old_node = pager.get_page(cursor.page_num as usize);
-    let mut old_node = LeafNode::from(old_node);
+    let mut old_node = pager.page(cursor.page_num as usize).unwrap_leaf();
     let old_max = old_node.node.get_node_max_key();
     let new_page_num = pager.get_unused_page_num();
     let new_node = pager.get_page(new_page_num as usize);
@@ -502,20 +536,21 @@ unsafe fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row)
     } else {
         let parent_page_num = old_node.node.parent();
         let new_max = old_node.node.get_node_max_key();
-        let parent = (&mut *cursor.table)
+        let mut parent = (&mut *cursor.table)
             .pager
-            .get_page(parent_page_num as usize);
-        InternalNode::from(parent).update_key(old_max, new_max);
+            .page(parent_page_num as usize)
+            .unwrap_internal();
+        parent.update_key(old_max, new_max);
         internal_node_insert(&mut *cursor.table, parent_page_num, new_page_num);
     }
 }
 
 pub(crate) unsafe fn leaf_node_insert(cursor: &mut Cursor, key: u32, value: &Row) {
-    let node = (&mut *cursor.table)
+    let mut node = (&mut *cursor.table)
         .pager
-        .get_page(cursor.page_num as usize);
+        .page(cursor.page_num as usize)
+        .unwrap_leaf();
 
-    let mut node = LeafNode::from(node);
     let num_cells = node.num_cells();
     if num_cells >= LEAF_NODE_MAX_CELLS as u32 {
         // Node full
