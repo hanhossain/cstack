@@ -106,30 +106,6 @@ fn insert_strings_of_max_length() {
 }
 
 #[test]
-fn strings_too_long_error() {
-    let username: String = std::iter::repeat("a").take(33).collect();
-    let email: String = std::iter::repeat("a").take(256).collect();
-    let input = vec![
-        format!("insert 1 {username} {email}"),
-        String::from("select"),
-        String::from(".exit"),
-    ];
-    let db = Database::new();
-    let output = db.run_script(input);
-    let expected = vec!["db > String is too long.", "db > Executed.", "db > "];
-    assert_eq!(output, expected);
-}
-
-#[test]
-fn id_negative_error() {
-    let input = vec!["insert -1 cstack foo@bar.com", "select", ".exit"];
-    let db = Database::new();
-    let output = db.run_script(input);
-    let expected = vec!["db > ID must be positive.", "db > Executed.", "db > "];
-    assert_eq!(output, expected);
-}
-
-#[test]
 fn close_connection_keep_data() {
     let db = Database::new();
     let output = db.run_script(vec!["insert 1 user1 person1@example.com", ".exit"]);

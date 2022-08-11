@@ -7,6 +7,7 @@ use std::ffi::CString;
 use std::process::exit;
 use std::str::FromStr;
 
+#[derive(Debug)]
 pub enum Statement {
     Insert(Row),
     Select,
@@ -26,6 +27,7 @@ impl TryFrom<&str> for Statement {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum PrepareError {
     NegativeId,
     StringTooLong,
@@ -138,5 +140,26 @@ pub unsafe fn execute_statement(
     match statement {
         Statement::Insert(row) => execute_insert(row, table),
         Statement::Select => execute_select(statement, table),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn strings_too_long() {
+        let username: String = std::iter::repeat("a").take(33).collect();
+        let email: String = std::iter::repeat("a").take(256).collect();
+        let query = format!("insert 1 {} {}", username, email);
+        let result = Statement::try_from(query.as_str()).unwrap_err();
+        assert_eq!(result, PrepareError::StringTooLong);
+    }
+
+    #[test]
+    fn id_negative() {
+        let query = "insert -1 cstack foo@bar.com";
+        let result = Statement::try_from(query).unwrap_err();
+        assert_eq!(result, PrepareError::NegativeId);
     }
 }

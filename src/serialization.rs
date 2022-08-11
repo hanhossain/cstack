@@ -11,6 +11,7 @@ pub const USERNAME_OFFSET: usize = ID_OFFSET + ID_SIZE;
 pub const EMAIL_OFFSET: usize = USERNAME_OFFSET + USERNAME_SIZE;
 pub const ROW_SIZE: usize = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
 
+#[derive(Debug)]
 pub struct Row {
     pub id: u32,
     pub username: [c_char; USERNAME_SIZE],
