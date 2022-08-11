@@ -38,23 +38,24 @@ impl Pager {
         }
     }
 
-    pub unsafe fn close(mut self) {
+    pub fn close(mut self) {
         let mut pager = &mut self;
-
-        for i in 0..pager.num_pages as usize {
-            if pager.pages[i as usize].is_null() {
-                continue;
-            }
-            pager.flush(i);
-            let _ = Box::from_raw(pager.pages[i]);
-            pager.pages[i] = null_mut();
-        }
-
-        for i in 0..TABLE_MAX_PAGES {
-            let page = pager.pages[i];
-            if !page.is_null() {
-                let _ = Box::from_raw(page);
+        unsafe {
+            for i in 0..pager.num_pages as usize {
+                if pager.pages[i as usize].is_null() {
+                    continue;
+                }
+                pager.flush(i);
+                let _ = Box::from_raw(pager.pages[i]);
                 pager.pages[i] = null_mut();
+            }
+
+            for i in 0..TABLE_MAX_PAGES {
+                let page = pager.pages[i];
+                if !page.is_null() {
+                    let _ = Box::from_raw(page);
+                    pager.pages[i] = null_mut();
+                }
             }
         }
     }
@@ -63,14 +64,14 @@ impl Pager {
         Node::from(self.get_page(page_num))
     }
 
-    pub unsafe fn new_leaf_page(&mut self, page_num: usize) -> LeafNode {
+    pub fn new_leaf_page(&mut self, page_num: usize) -> LeafNode {
         let node = self.get_page(page_num as usize);
         let mut node = LeafNode::from(node);
         node.initialize();
         node
     }
 
-    pub unsafe fn new_internal_page(&mut self, page_num: usize) -> InternalNode {
+    pub fn new_internal_page(&mut self, page_num: usize) -> InternalNode {
         let node = self.get_page(page_num as usize);
         let mut node = InternalNode::from(node);
         node.initialize();
@@ -110,7 +111,7 @@ impl Pager {
         CommonNode::new(self.pages[page_num])
     }
 
-    unsafe fn flush(&mut self, page_num: usize) {
+    fn flush(&mut self, page_num: usize) {
         if self.pages[page_num].is_null() {
             println!("Tried to flush null page");
             exit(EXIT_FAILURE);
@@ -121,7 +122,7 @@ impl Pager {
             .unwrap();
 
         self.file
-            .write_all(std::slice::from_raw_parts(self.pages[page_num], PAGE_SIZE))
+            .write_all(unsafe { std::slice::from_raw_parts(self.pages[page_num], PAGE_SIZE) })
             .unwrap();
     }
 

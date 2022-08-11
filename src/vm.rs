@@ -18,7 +18,7 @@ impl TryFrom<&str> for Statement {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         if &value[..6] == "insert" {
-            unsafe { prepare_insert(value) }
+            prepare_insert(value)
         } else if value == "select" {
             Ok(Statement::Select)
         } else {
@@ -36,7 +36,7 @@ pub enum PrepareError {
 }
 
 #[allow(temporary_cstring_as_ptr)]
-unsafe fn prepare_insert(input: &str) -> Result<Statement, PrepareError> {
+fn prepare_insert(input: &str) -> Result<Statement, PrepareError> {
     let mut splitter = input.split(" ");
     let _keyword = splitter.next();
     let id_string = splitter.next();
@@ -60,14 +60,16 @@ unsafe fn prepare_insert(input: &str) -> Result<Statement, PrepareError> {
     let mut row = Row::new();
 
     row.id = id as u32;
-    strcpy(
-        row.username.as_mut_ptr(),
-        CString::new(username).unwrap().as_ptr(),
-    );
-    strcpy(
-        row.email.as_mut_ptr(),
-        CString::new(email).unwrap().as_ptr(),
-    );
+    unsafe {
+        strcpy(
+            row.username.as_mut_ptr(),
+            CString::new(username).unwrap().as_ptr(),
+        );
+        strcpy(
+            row.email.as_mut_ptr(),
+            CString::new(email).unwrap().as_ptr(),
+        );
+    }
 
     Ok(Statement::Insert(row))
 }
@@ -100,7 +102,7 @@ pub enum ExecuteError {
     DuplicateKey,
 }
 
-unsafe fn execute_insert(row: &Row, table: &mut Table) -> Result<(), ExecuteError> {
+fn execute_insert(row: &Row, table: &mut Table) -> Result<(), ExecuteError> {
     let key_to_insert = row.id;
     let mut cursor = table.find(key_to_insert);
 
@@ -118,12 +120,14 @@ unsafe fn execute_insert(row: &Row, table: &mut Table) -> Result<(), ExecuteErro
     Ok(())
 }
 
-unsafe fn execute_select(_statement: &Statement, table: &mut Table) -> Result<(), ExecuteError> {
+fn execute_select(_statement: &Statement, table: &mut Table) -> Result<(), ExecuteError> {
     let mut cursor = table.start();
     while !cursor.end_of_table {
         let mut row = Row::new();
-        deserialize_row(cursor.value(), &mut row);
-        row.print_row();
+        unsafe {
+            deserialize_row(cursor.value(), &mut row);
+            row.print_row();
+        }
         cursor.advance();
     }
 
@@ -132,8 +136,8 @@ unsafe fn execute_select(_statement: &Statement, table: &mut Table) -> Result<()
 
 pub fn execute_statement(statement: &Statement, table: &mut Table) -> Result<(), ExecuteError> {
     match statement {
-        Statement::Insert(row) => unsafe { execute_insert(row, table) },
-        Statement::Select => unsafe { execute_select(statement, table) },
+        Statement::Insert(row) => execute_insert(row, table),
+        Statement::Select => execute_select(statement, table),
     }
 }
 

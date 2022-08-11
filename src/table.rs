@@ -11,7 +11,7 @@ impl Table {
     /// Return the position of the given key.
     /// If the key is not present, return the position
     /// where it should be inserted.
-    pub unsafe fn find(&mut self, key: u32) -> Cursor {
+    pub fn find(&mut self, key: u32) -> Cursor {
         let root_page_num = self.root_page_num;
         let root_node = self.pager.page(root_page_num as usize);
 
@@ -21,7 +21,7 @@ impl Table {
         }
     }
 
-    pub unsafe fn start(&mut self) -> Cursor {
+    pub fn start(&mut self) -> Cursor {
         let mut cursor = self.find(0);
         let page_num = cursor.page_num as usize;
         let node = self.pager.page(page_num).unwrap_leaf();
@@ -31,15 +31,12 @@ impl Table {
     }
 
     pub fn open(filename: &str) -> Table {
-        let pager = unsafe {
-            let mut pager = Pager::open(filename);
-            if pager.num_pages == 0 {
-                // New database file. Initialize page 0 as leaf node.
-                let mut root_node = pager.new_leaf_page(0);
-                root_node.node.set_root(true);
-            }
-            pager
-        };
+        let mut pager = Pager::open(filename);
+        if pager.num_pages == 0 {
+            // New database file. Initialize page 0 as leaf node.
+            let mut root_node = pager.new_leaf_page(0);
+            root_node.node.set_root(true);
+        }
 
         Table {
             pager,
@@ -48,9 +45,7 @@ impl Table {
     }
 
     pub fn close(self) {
-        unsafe {
-            self.pager.close();
-        }
+        self.pager.close();
     }
 
     // Handle splitting the root.
@@ -58,7 +53,7 @@ impl Table {
     // Address of right child passed in.
     // Re-initialize root page to contain the new root node.
     // New root node points to two children.
-    pub(crate) unsafe fn create_new_root(&mut self, right_child_page_num: u32) {
+    pub(crate) fn create_new_root(&mut self, right_child_page_num: u32) {
         let pager = &mut self.pager;
 
         // get old root page
@@ -73,11 +68,13 @@ impl Table {
         let mut left_child = pager.page(left_child_page_num as usize);
 
         // Copy data from old root to left child
-        memcpy(
-            left_child.buffer_mut_ptr() as *mut c_void,
-            root.buffer_ptr() as *const c_void,
-            PAGE_SIZE,
-        );
+        unsafe {
+            memcpy(
+                left_child.buffer_mut_ptr() as *mut c_void,
+                root.buffer_ptr() as *const c_void,
+                PAGE_SIZE,
+            );
+        }
         left_child.set_root(false);
 
         // Create a new root node as an internal node with one key and two children
@@ -102,17 +99,17 @@ pub struct Cursor {
 }
 
 impl Cursor {
-    pub unsafe fn value(&mut self) -> *mut u8 {
-        let mut node = (*self.table)
+    pub fn value(&mut self) -> *mut u8 {
+        let mut node = unsafe { &mut *self.table }
             .pager
             .page(self.page_num as usize)
             .unwrap_leaf();
         node.value(self.cell_num)
     }
 
-    pub unsafe fn advance(&mut self) {
+    pub fn advance(&mut self) {
         let page_num = self.page_num;
-        let node = (&mut *self.table)
+        let node = unsafe { &mut *self.table }
             .pager
             .page(page_num as usize)
             .unwrap_leaf();
