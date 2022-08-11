@@ -27,7 +27,7 @@ pub fn print_constants() {
     println!("LEAF_NODE_MAX_CELLS: {}", LEAF_NODE_MAX_CELLS);
 }
 
-pub unsafe fn print_tree(pager: &mut Pager, page_num: u32, indentation_level: u32) {
+pub fn print_tree(pager: &mut Pager, page_num: u32, indentation_level: u32) {
     let node = pager.page(page_num as usize);
 
     match node {

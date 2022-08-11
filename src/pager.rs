@@ -72,8 +72,8 @@ impl Pager {
         }
     }
 
-    pub unsafe fn page(&mut self, page_num: usize) -> Node {
-        Node::from(self.get_page(page_num))
+    pub fn page(&mut self, page_num: usize) -> Node {
+        unsafe { Node::from(self.get_page(page_num)) }
     }
 
     pub unsafe fn new_leaf_page(&mut self, page_num: usize) -> LeafNode {

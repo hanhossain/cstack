@@ -47,8 +47,10 @@ impl Table {
         }
     }
 
-    pub unsafe fn close(self) {
-        self.pager.close();
+    pub fn close(self) {
+        unsafe {
+            self.pager.close();
+        }
     }
 
     // Handle splitting the root.

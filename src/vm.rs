@@ -76,10 +76,7 @@ pub enum MetaCommandError {
     UnrecognizedCommand,
 }
 
-pub unsafe fn do_meta_command(
-    query: &str,
-    mut table: Table,
-) -> Result<Table, (Table, MetaCommandError)> {
+pub fn do_meta_command(query: &str, mut table: Table) -> Result<Table, (Table, MetaCommandError)> {
     match query {
         ".exit" => {
             table.close();
@@ -133,19 +130,17 @@ unsafe fn execute_select(_statement: &Statement, table: &mut Table) -> Result<()
     Ok(())
 }
 
-pub unsafe fn execute_statement(
-    statement: &Statement,
-    table: &mut Table,
-) -> Result<(), ExecuteError> {
+pub fn execute_statement(statement: &Statement, table: &mut Table) -> Result<(), ExecuteError> {
     match statement {
-        Statement::Insert(row) => execute_insert(row, table),
-        Statement::Select => execute_select(statement, table),
+        Statement::Insert(row) => unsafe { execute_insert(row, table) },
+        Statement::Select => unsafe { execute_select(statement, table) },
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::{assert_eq, format};
 
     #[test]
     fn strings_too_long() {

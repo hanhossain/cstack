@@ -234,8 +234,8 @@ impl InternalNode {
     }
 
     /// Gets the number of keys in the node.
-    pub unsafe fn num_keys(&self) -> u32 {
-        *(self.node.buffer.add(INTERNAL_NODE_NUM_KEYS_OFFSET) as *mut u32)
+    pub fn num_keys(&self) -> u32 {
+        unsafe { *(self.node.buffer.add(INTERNAL_NODE_NUM_KEYS_OFFSET) as *mut u32) }
     }
 
     /// Sets the number of keys in the node;
@@ -244,8 +244,8 @@ impl InternalNode {
     }
 
     /// Gets the location of the right child.
-    pub unsafe fn right_child(&self) -> u32 {
-        *(self.node.buffer.add(INTERNAL_NODE_RIGHT_CHILD_OFFSET) as *mut u32)
+    pub fn right_child(&self) -> u32 {
+        unsafe { *(self.node.buffer.add(INTERNAL_NODE_RIGHT_CHILD_OFFSET) as *mut u32) }
     }
 
     /// Sets the location of the right child.
@@ -272,7 +272,7 @@ impl InternalNode {
     }
 
     /// Gets the location of the specific child.
-    pub unsafe fn child(&self, child_num: u32) -> u32 {
+    pub fn child(&self, child_num: u32) -> u32 {
         let num_keys = self.num_keys();
         if child_num > num_keys {
             println!("Tried to access child_num {child_num} > num_keys {num_keys}");
@@ -282,7 +282,7 @@ impl InternalNode {
         if child_num == num_keys {
             self.right_child()
         } else {
-            self.cell(child_num)
+            unsafe { self.cell(child_num) }
         }
     }
 
@@ -301,13 +301,15 @@ impl InternalNode {
         }
     }
 
-    pub unsafe fn key(&self, key_num: u32) -> u32 {
-        let internal_node_cell = self
-            .node
-            .buffer
-            .add(INTERNAL_NODE_HEADER_SIZE + key_num as usize * INTERNAL_NODE_CELL_SIZE)
-            as *mut u32;
-        *(internal_node_cell.add(INTERNAL_NODE_CHILD_SIZE))
+    pub fn key(&self, key_num: u32) -> u32 {
+        unsafe {
+            let internal_node_cell = self
+                .node
+                .buffer
+                .add(INTERNAL_NODE_HEADER_SIZE + key_num as usize * INTERNAL_NODE_CELL_SIZE)
+                as *mut u32;
+            *(internal_node_cell.add(INTERNAL_NODE_CHILD_SIZE))
+        }
     }
 
     pub unsafe fn set_key(&mut self, key_num: u32, key: u32) {
@@ -363,8 +365,8 @@ impl From<CommonNode> for LeafNode {
 
 impl LeafNode {
     /// Get the number of cells currently occupied in the node.
-    pub unsafe fn num_cells(&self) -> u32 {
-        *(self.node.buffer.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32)
+    pub fn num_cells(&self) -> u32 {
+        unsafe { *(self.node.buffer.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32) }
     }
 
     /// Set the number of cells currently occupied in the node.
@@ -379,8 +381,8 @@ impl LeafNode {
             .add(LEAF_NODE_HEADER_SIZE + cell_num as usize * LEAF_NODE_CELL_SIZE)
     }
 
-    pub unsafe fn key(&self, cell_num: u32) -> u32 {
-        *(self.cell(cell_num) as *mut u32)
+    pub fn key(&self, cell_num: u32) -> u32 {
+        unsafe { *(self.cell(cell_num) as *mut u32) }
     }
 
     pub unsafe fn set_key(&mut self, cell_num: u32, key: u32) {
