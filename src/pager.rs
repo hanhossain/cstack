@@ -1,9 +1,6 @@
 use crate::node::{CommonNode, InternalNode, LeafNode, Node};
-use libc::EXIT_FAILURE;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::process::exit;
-use std::ptr::null_mut;
 
 pub const TABLE_MAX_PAGES: usize = 100;
 pub const PAGE_SIZE: usize = 4096;
@@ -12,7 +9,7 @@ pub struct Pager {
     file: File,
     file_length: u32,
     pub num_pages: u32,
-    pages: [*mut u8; TABLE_MAX_PAGES],
+    pages: [Option<Box<[u8; PAGE_SIZE]>>; TABLE_MAX_PAGES],
 }
 
 impl Pager {
@@ -26,37 +23,29 @@ impl Pager {
 
         let file_length = file.seek(SeekFrom::End(0)).unwrap();
         if file_length as usize % PAGE_SIZE != 0 {
-            println!("Db file is not a whole number of pages. Corrupt file.");
-            exit(EXIT_FAILURE);
+            panic!("Db file is not a whole number of pages. Corrupt file.");
         }
 
         Pager {
             file,
             file_length: file_length as u32,
             num_pages: file_length as u32 / PAGE_SIZE as u32,
-            pages: [null_mut(); TABLE_MAX_PAGES],
+            pages: std::array::from_fn(|_| None),
         }
     }
 
     pub fn close(mut self) {
         let mut pager = &mut self;
-        unsafe {
-            for i in 0..pager.num_pages as usize {
-                if pager.pages[i as usize].is_null() {
-                    continue;
-                }
-                pager.flush(i);
-                let _ = Box::from_raw(pager.pages[i]);
-                pager.pages[i] = null_mut();
+        for i in 0..pager.num_pages as usize {
+            if pager.pages[i as usize].is_none() {
+                continue;
             }
+            pager.flush(i);
+            pager.pages[i] = None;
+        }
 
-            for i in 0..TABLE_MAX_PAGES {
-                let page = pager.pages[i];
-                if !page.is_null() {
-                    let _ = Box::from_raw(page);
-                    pager.pages[i] = null_mut();
-                }
-            }
+        for i in 0..TABLE_MAX_PAGES {
+            let _ = pager.pages[i].take();
         }
     }
 
@@ -80,11 +69,10 @@ impl Pager {
 
     fn get_page(&mut self, page_num: usize) -> CommonNode {
         if page_num > TABLE_MAX_PAGES {
-            println!("Tried to fetch page number out of bounds. {page_num} > {TABLE_MAX_PAGES}");
-            exit(EXIT_FAILURE);
+            panic!("Tried to fetch page number out of bounds. {page_num} > {TABLE_MAX_PAGES}");
         }
 
-        if self.pages[page_num].is_null() {
+        if self.pages[page_num].is_none() {
             // Cache miss. Allocate memory and load from file.
             let mut page = Box::new([0u8; PAGE_SIZE]);
             let mut num_pages = self.file_length as usize / PAGE_SIZE;
@@ -101,29 +89,29 @@ impl Pager {
                 self.file.read(page.as_mut_slice()).unwrap();
             }
 
-            self.pages[page_num] = Box::into_raw(page) as *mut u8;
+            self.pages[page_num] = Some(page);
 
             if page_num >= self.num_pages as usize {
                 self.num_pages = page_num as u32 + 1;
             }
         }
 
-        CommonNode::new(self.pages[page_num])
+        let buffer = (&mut self.pages[page_num]).as_mut().unwrap().as_mut_ptr();
+        CommonNode::new(buffer)
     }
 
     fn flush(&mut self, page_num: usize) {
-        if self.pages[page_num].is_null() {
-            println!("Tried to flush null page");
-            exit(EXIT_FAILURE);
-        }
-
+        let page = self
+            .pages
+            .get(page_num)
+            .unwrap()
+            .as_ref()
+            .expect("Tried to flush null page");
         self.file
             .seek(SeekFrom::Start(page_num as u64 * PAGE_SIZE as u64))
             .unwrap();
 
-        self.file
-            .write_all(unsafe { std::slice::from_raw_parts(self.pages[page_num], PAGE_SIZE) })
-            .unwrap();
+        self.file.write_all(page.as_slice()).unwrap();
     }
 
     // TODO: Until we start recycling free pages, new pages will always
