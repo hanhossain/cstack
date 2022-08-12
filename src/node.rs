@@ -388,6 +388,46 @@ impl InternalNode {
             Node::Internal(internal) => internal.find(table, key),
         }
     }
+
+    /// Add a child/key pair to node.
+    fn insert<T: Storage>(&mut self, table: &mut Table<T>, child_page_num: u32) {
+        let pager = &mut table.pager;
+        let child = pager.page(child_page_num as usize);
+        let child_max_key = child.get_max_key();
+
+        let index = self.find_child(child_max_key);
+        let original_num_keys = self.num_keys();
+        self.set_num_keys(original_num_keys + 1);
+
+        if original_num_keys as usize >= INTERNAL_NODE_MAX_CELLS {
+            println!("Need to implement splitting internal node");
+            exit(EXIT_FAILURE);
+        }
+
+        let right_child_page_num = self.right_child();
+        let right_child = pager.page(right_child_page_num as usize);
+        if child_max_key > right_child.get_max_key() {
+            // Replace right child
+            self.set_child(original_num_keys, right_child_page_num);
+            self.set_key(original_num_keys, right_child.get_max_key());
+            self.set_right_child(child_page_num);
+        } else {
+            // Make room for the new cell
+            for i in ((index + 1)..=original_num_keys).rev() {
+                let destination = self.cell(i);
+                let source = self.cell(i - 1);
+                unsafe {
+                    memcpy(
+                        destination as *mut c_void,
+                        source as *mut c_void,
+                        INTERNAL_NODE_CELL_SIZE,
+                    );
+                }
+            }
+            self.set_child(index, child_page_num);
+            self.set_key(index, child_max_key);
+        }
+    }
 }
 
 pub struct LeafNode {
@@ -493,51 +533,6 @@ impl LeafNode {
     }
 }
 
-/// Add a child/key pair to parent that corresponds to child.
-fn internal_node_insert<T: Storage>(
-    table: &mut Table<T>,
-    parent_page_num: u32,
-    child_page_num: u32,
-) {
-    let pager = &mut table.pager;
-    let mut parent = pager.page(parent_page_num as usize).unwrap_internal();
-    let child = pager.page(child_page_num as usize);
-    let child_max_key = child.get_max_key();
-
-    let index = parent.find_child(child_max_key);
-    let original_num_keys = parent.num_keys();
-    parent.set_num_keys(original_num_keys + 1);
-
-    if original_num_keys as usize >= INTERNAL_NODE_MAX_CELLS {
-        println!("Need to implement splitting internal node");
-        exit(EXIT_FAILURE);
-    }
-
-    let right_child_page_num = parent.right_child();
-    let right_child = pager.page(right_child_page_num as usize);
-    if child_max_key > right_child.get_max_key() {
-        // Replace right child
-        parent.set_child(original_num_keys, right_child_page_num);
-        parent.set_key(original_num_keys, right_child.get_max_key());
-        parent.set_right_child(child_page_num);
-    } else {
-        // Make room for the new cell
-        for i in ((index + 1)..=original_num_keys).rev() {
-            let destination = parent.cell(i);
-            let source = parent.cell(i - 1);
-            unsafe {
-                memcpy(
-                    destination as *mut c_void,
-                    source as *mut c_void,
-                    INTERNAL_NODE_CELL_SIZE,
-                );
-            }
-        }
-        parent.set_child(index, child_page_num);
-        parent.set_key(index, child_max_key);
-    }
-}
-
 fn leaf_node_split_and_insert<T: Storage>(cursor: Cursor<T>, key: u32, value: &Row) {
     // Create a new node and move half the cells over.
     // Insert the new value in one of the two nodes.
@@ -599,7 +594,7 @@ fn leaf_node_split_and_insert<T: Storage>(cursor: Cursor<T>, key: u32, value: &R
                 .page(parent_page_num as usize)
                 .unwrap_internal();
             parent.update_key(old_max, new_max);
-            internal_node_insert(&mut *cursor.table, parent_page_num, new_page_num);
+            parent.insert(&mut *cursor.table, new_page_num);
         }
     }
 }
