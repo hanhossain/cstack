@@ -1,4 +1,4 @@
-use crate::node::{internal_node_find, leaf_node_find, Node};
+use crate::node::{LeafNode, Node};
 use crate::pager::{Pager, PAGE_SIZE};
 use libc::{c_void, memcpy};
 
@@ -16,16 +16,14 @@ impl Table {
         let root_node = self.pager.page(root_page_num as usize);
 
         match root_node {
-            Node::Internal(_) => internal_node_find(self, root_page_num, key),
-            Node::Leaf(_) => leaf_node_find(self, root_page_num, key),
+            Node::Internal(internal) => internal.find(self, key),
+            Node::Leaf(leaf) => leaf.find(self, key),
         }
     }
 
     pub fn start(&mut self) -> Cursor {
         let mut cursor = self.find(0);
-        let page_num = cursor.page_num as usize;
-        let node = self.pager.page(page_num).unwrap_leaf();
-        let num_cells = node.num_cells();
+        let num_cells = cursor.node.num_cells();
         cursor.end_of_table = num_cells == 0;
         cursor
     }
@@ -92,37 +90,30 @@ impl Table {
 /// Leaf node iterator
 pub struct Cursor {
     pub table: *mut Table,
-    pub page_num: u32,
     pub cell_num: u32,
     /// Indicates a position one past the last element
     pub end_of_table: bool,
+    pub node: LeafNode,
 }
 
 impl Cursor {
     pub fn value(&mut self) -> *mut u8 {
-        let mut node = unsafe { &mut *self.table }
-            .pager
-            .page(self.page_num as usize)
-            .unwrap_leaf();
-        node.value(self.cell_num)
+        self.node.value(self.cell_num)
     }
 
     pub fn advance(&mut self) {
-        let page_num = self.page_num;
-        let node = unsafe { &mut *self.table }
-            .pager
-            .page(page_num as usize)
-            .unwrap_leaf();
-
         self.cell_num += 1;
-        if self.cell_num >= node.num_cells() {
+        if self.cell_num >= self.node.num_cells() {
             // Advance to next leaf node
-            let next_page_num = node.next_leaf();
+            let next_page_num = self.node.next_leaf();
             if next_page_num == 0 {
                 // This was the rightmost leaf
                 self.end_of_table = true;
             } else {
-                self.page_num = next_page_num;
+                self.node = unsafe { &mut *self.table }
+                    .pager
+                    .page(next_page_num as usize)
+                    .unwrap_leaf();
                 self.cell_num = 0;
             }
         }

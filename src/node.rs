@@ -102,6 +102,7 @@ impl Node {
         }
     }
 
+    #[allow(dead_code)]
     pub fn unwrap_leaf(self) -> LeafNode {
         match self {
             Node::Internal(_) => panic!("Attempted to unwrap internal node as leaf node"),
@@ -361,6 +362,16 @@ impl InternalNode {
     pub fn get_max_key(&self) -> u32 {
         self.key(self.num_keys() - 1)
     }
+
+    pub fn find(&self, table: &mut Table, key: u32) -> Cursor {
+        let child_index = self.find_child(key);
+        let child_num = self.child(child_index);
+        let child = table.pager.page(child_num as usize);
+        match child {
+            Node::Leaf(leaf) => leaf.find(table, key),
+            Node::Internal(internal) => internal.find(table, key),
+        }
+    }
 }
 
 pub struct LeafNode {
@@ -433,6 +444,37 @@ impl LeafNode {
     pub fn get_max_key(&self) -> u32 {
         self.key(self.num_cells() - 1)
     }
+
+    pub fn find(self, table: &mut Table, key: u32) -> Cursor {
+        let num_cells = self.num_cells();
+
+        // Binary search
+        let mut min_index = 0;
+        let mut one_past_max_index = num_cells;
+        while one_past_max_index != min_index {
+            let index = (min_index + one_past_max_index) / 2;
+            let key_at_index = self.key(index);
+            if key == key_at_index {
+                return Cursor {
+                    table,
+                    cell_num: index,
+                    end_of_table: false,
+                    node: self,
+                };
+            } else if key < key_at_index {
+                one_past_max_index = index;
+            } else {
+                min_index = index + 1;
+            }
+        }
+
+        Cursor {
+            table,
+            cell_num: min_index,
+            end_of_table: false,
+            node: self,
+        }
+    }
 }
 
 /// Add a child/key pair to parent that corresponds to child.
@@ -476,55 +518,13 @@ fn internal_node_insert(table: &mut Table, parent_page_num: u32, child_page_num:
     }
 }
 
-pub(crate) fn leaf_node_find(table: &mut Table, page_num: u32, key: u32) -> Cursor {
-    let node = table.pager.page(page_num as usize).unwrap_leaf();
-    let num_cells = node.num_cells();
-
-    let mut cursor = Cursor {
-        table,
-        page_num,
-        cell_num: 0,
-        end_of_table: false,
-    };
-
-    // Binary search
-    let mut min_index = 0;
-    let mut one_past_max_index = num_cells;
-    while one_past_max_index != min_index {
-        let index = (min_index + one_past_max_index) / 2;
-        let key_at_index = node.key(index);
-        if key == key_at_index {
-            cursor.cell_num = index;
-            return cursor;
-        } else if key < key_at_index {
-            one_past_max_index = index;
-        } else {
-            min_index = index + 1;
-        }
-    }
-
-    cursor.cell_num = min_index;
-    cursor
-}
-
-pub(crate) fn internal_node_find(table: &mut Table, page_num: u32, key: u32) -> Cursor {
-    let node = table.pager.page(page_num as usize).unwrap_internal();
-    let child_index = node.find_child(key);
-    let child_num = node.child(child_index);
-    let child = table.pager.page(child_num as usize);
-    match child {
-        Node::Leaf(_) => leaf_node_find(table, child_num, key),
-        Node::Internal(_) => internal_node_find(table, child_num, key),
-    }
-}
-
-fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row) {
+fn leaf_node_split_and_insert(cursor: Cursor, key: u32, value: &Row) {
     // Create a new node and move half the cells over.
     // Insert the new value in one of the two nodes.
     // Update parent or create a new parent.
     let table = unsafe { &mut *cursor.table };
     let pager = &mut table.pager;
-    let mut old_node = pager.page(cursor.page_num as usize).unwrap_leaf();
+    let mut old_node = cursor.node;
     let old_max = old_node.get_max_key();
     let new_page_num = pager.get_unused_page_num();
     let mut new_node = pager.new_leaf_page(new_page_num as usize);
@@ -584,13 +584,8 @@ fn leaf_node_split_and_insert(cursor: &mut Cursor, key: u32, value: &Row) {
     }
 }
 
-pub(crate) fn leaf_node_insert(cursor: &mut Cursor, key: u32, value: &Row) {
-    let mut node = unsafe { &mut *cursor.table }
-        .pager
-        .page(cursor.page_num as usize)
-        .unwrap_leaf();
-
-    let num_cells = node.num_cells();
+pub(crate) fn leaf_node_insert(mut cursor: Cursor, key: u32, value: &Row) {
+    let num_cells = cursor.node.num_cells();
     if num_cells >= LEAF_NODE_MAX_CELLS as u32 {
         // Node full
         leaf_node_split_and_insert(cursor, key, value);
@@ -602,17 +597,17 @@ pub(crate) fn leaf_node_insert(cursor: &mut Cursor, key: u32, value: &Row) {
         for i in (cursor.cell_num + 1..=num_cells).rev() {
             unsafe {
                 memcpy(
-                    node.cell(i) as *mut c_void,
-                    node.cell(i - 1) as *mut c_void,
+                    cursor.node.cell(i) as *mut c_void,
+                    cursor.node.cell(i - 1) as *mut c_void,
                     LEAF_NODE_CELL_SIZE,
                 );
             }
         }
     }
 
-    node.set_num_cells(node.num_cells() + 1);
-    node.set_key(cursor.cell_num, key);
+    cursor.node.set_num_cells(cursor.node.num_cells() + 1);
+    cursor.node.set_key(cursor.cell_num, key);
     unsafe {
-        serialize_row(value, node.value(cursor.cell_num));
+        serialize_row(value, cursor.node.value(cursor.cell_num));
     }
 }

@@ -104,19 +104,18 @@ pub enum ExecuteError {
 
 fn execute_insert(row: &Row, table: &mut Table) -> Result<(), ExecuteError> {
     let key_to_insert = row.id;
-    let mut cursor = table.find(key_to_insert);
+    let cursor = table.find(key_to_insert);
 
     // The cursor will always point to a leaf node.
-    let node = table.pager.page(cursor.page_num as usize).unwrap_leaf();
 
-    if cursor.cell_num < node.num_cells() {
-        let key_at_index = node.key(cursor.cell_num);
+    if cursor.cell_num < cursor.node.num_cells() {
+        let key_at_index = cursor.node.key(cursor.cell_num);
         if key_at_index == key_to_insert {
             return Err(ExecuteError::DuplicateKey);
         }
     }
 
-    leaf_node_insert(&mut cursor, row.id, row);
+    leaf_node_insert(cursor, row.id, row);
     Ok(())
 }
 
