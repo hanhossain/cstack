@@ -68,10 +68,6 @@ impl Pager {
     }
 
     fn get_page(&mut self, page_num: usize) -> CommonNode {
-        if page_num > TABLE_MAX_PAGES {
-            panic!("Tried to fetch page number out of bounds. {page_num} > {TABLE_MAX_PAGES}");
-        }
-
         if self.pages[page_num].is_none() {
             // Cache miss. Allocate memory and load from file.
             let mut page = Box::new([0u8; PAGE_SIZE]);
@@ -101,10 +97,7 @@ impl Pager {
     }
 
     fn flush(&mut self, page_num: usize) {
-        let page = self
-            .pages
-            .get(page_num)
-            .unwrap()
+        let page = self.pages[page_num]
             .as_ref()
             .expect("Tried to flush null page");
         self.file
