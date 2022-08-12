@@ -1,7 +1,6 @@
 use crate::node::{LeafNode, Node};
-use crate::pager::{Pager, PAGE_SIZE};
+use crate::pager::Pager;
 use crate::storage::Storage;
-use libc::{c_void, memcpy};
 
 pub struct Table<T> {
     pub pager: Pager<T>,
@@ -67,13 +66,7 @@ impl<T: Storage> Table<T> {
         let mut left_child = pager.page(left_child_page_num as usize);
 
         // Copy data from old root to left child
-        unsafe {
-            memcpy(
-                left_child.buffer_mut_ptr() as *mut c_void,
-                root.buffer_ptr() as *const c_void,
-                PAGE_SIZE,
-            );
-        }
+        left_child.buffer_mut().copy_from_slice(root.buffer());
         left_child.set_root(false);
 
         // Create a new root node as an internal node with one key and two children

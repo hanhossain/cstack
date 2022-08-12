@@ -110,6 +110,21 @@ impl Node {
         }
     }
 
+    pub fn buffer(&self) -> &[u8] {
+        match self {
+            Node::Internal(node) => node.node.get_buffer(),
+            Node::Leaf(node) => node.node.get_buffer(),
+        }
+    }
+
+    pub fn buffer_mut(&mut self) -> &mut [u8] {
+        match self {
+            Node::Internal(node) => node.node.get_buffer_mut(),
+            Node::Leaf(node) => node.node.get_buffer_mut(),
+        }
+    }
+
+    #[allow(dead_code)]
     pub fn buffer_mut_ptr(&mut self) -> *mut u8 {
         match self {
             Node::Internal(node) => node.node.buffer,
@@ -117,6 +132,7 @@ impl Node {
         }
     }
 
+    #[allow(dead_code)]
     pub fn buffer_ptr(&self) -> *const u8 {
         match self {
             Node::Internal(node) => node.node.buffer,
