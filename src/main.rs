@@ -2,9 +2,11 @@ mod node;
 mod pager;
 mod repl;
 mod serialization;
+mod storage;
 mod table;
 mod vm;
 
+use crate::storage::FileStorage;
 use crate::vm::Statement;
 use repl::{print_prompt, read_input};
 use table::Table;
@@ -15,7 +17,7 @@ fn main() {
         .skip(1)
         .next()
         .expect("Must supply a database filename");
-    let mut table = Table::open(&filename);
+    let mut table: Table<FileStorage> = Table::open(&filename);
 
     loop {
         print_prompt();

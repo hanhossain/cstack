@@ -1,6 +1,7 @@
 use crate::node::leaf_node_insert;
 use crate::repl::{print_constants, print_tree};
 use crate::serialization::{deserialize_row, Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE};
+use crate::storage::Storage;
 use crate::table::Table;
 use libc::{strcpy, EXIT_SUCCESS};
 use std::ffi::CString;
@@ -78,7 +79,10 @@ pub enum MetaCommandError {
     UnrecognizedCommand,
 }
 
-pub fn do_meta_command(query: &str, mut table: Table) -> Result<Table, (Table, MetaCommandError)> {
+pub fn do_meta_command<T: Storage>(
+    query: &str,
+    mut table: Table<T>,
+) -> Result<Table<T>, (Table<T>, MetaCommandError)> {
     match query {
         ".exit" => {
             table.close();
@@ -102,12 +106,11 @@ pub enum ExecuteError {
     DuplicateKey,
 }
 
-fn execute_insert(row: &Row, table: &mut Table) -> Result<(), ExecuteError> {
+fn execute_insert<T: Storage>(row: &Row, table: &mut Table<T>) -> Result<(), ExecuteError> {
     let key_to_insert = row.id;
     let cursor = table.find(key_to_insert);
 
     // The cursor will always point to a leaf node.
-
     if cursor.cell_num < cursor.node.num_cells() {
         let key_at_index = cursor.node.key(cursor.cell_num);
         if key_at_index == key_to_insert {
@@ -119,7 +122,10 @@ fn execute_insert(row: &Row, table: &mut Table) -> Result<(), ExecuteError> {
     Ok(())
 }
 
-fn execute_select(_statement: &Statement, table: &mut Table) -> Result<(), ExecuteError> {
+fn execute_select<T: Storage>(
+    _statement: &Statement,
+    table: &mut Table<T>,
+) -> Result<(), ExecuteError> {
     let mut cursor = table.start();
     while !cursor.end_of_table {
         let mut row = Row::new();
@@ -133,7 +139,10 @@ fn execute_select(_statement: &Statement, table: &mut Table) -> Result<(), Execu
     Ok(())
 }
 
-pub fn execute_statement(statement: &Statement, table: &mut Table) -> Result<(), ExecuteError> {
+pub fn execute_statement<T: Storage>(
+    statement: &Statement,
+    table: &mut Table<T>,
+) -> Result<(), ExecuteError> {
     match statement {
         Statement::Insert(row) => execute_insert(row, table),
         Statement::Select => execute_select(statement, table),

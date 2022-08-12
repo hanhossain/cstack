@@ -1,5 +1,6 @@
 use crate::pager::PAGE_SIZE;
 use crate::serialization::{serialize_row, Row, ROW_SIZE};
+use crate::storage::Storage;
 use crate::table::{Cursor, Table};
 use libc::{memcpy, EXIT_FAILURE};
 use serde::{Deserialize, Serialize};
@@ -102,7 +103,6 @@ impl Node {
         }
     }
 
-    #[allow(dead_code)]
     pub fn unwrap_leaf(self) -> LeafNode {
         match self {
             Node::Internal(_) => panic!("Attempted to unwrap internal node as leaf node"),
@@ -363,7 +363,7 @@ impl InternalNode {
         self.key(self.num_keys() - 1)
     }
 
-    pub fn find(&self, table: &mut Table, key: u32) -> Cursor {
+    pub fn find<T: Storage>(&self, table: &mut Table<T>, key: u32) -> Cursor<T> {
         let child_index = self.find_child(key);
         let child_num = self.child(child_index);
         let child = table.pager.page(child_num as usize);
@@ -445,7 +445,7 @@ impl LeafNode {
         self.key(self.num_cells() - 1)
     }
 
-    pub fn find(self, table: &mut Table, key: u32) -> Cursor {
+    pub fn find<T>(self, table: &mut Table<T>, key: u32) -> Cursor<T> {
         let num_cells = self.num_cells();
 
         // Binary search
@@ -478,7 +478,11 @@ impl LeafNode {
 }
 
 /// Add a child/key pair to parent that corresponds to child.
-fn internal_node_insert(table: &mut Table, parent_page_num: u32, child_page_num: u32) {
+fn internal_node_insert<T: Storage>(
+    table: &mut Table<T>,
+    parent_page_num: u32,
+    child_page_num: u32,
+) {
     let pager = &mut table.pager;
     let mut parent = pager.page(parent_page_num as usize).unwrap_internal();
     let child = pager.page(child_page_num as usize);
@@ -518,7 +522,7 @@ fn internal_node_insert(table: &mut Table, parent_page_num: u32, child_page_num:
     }
 }
 
-fn leaf_node_split_and_insert(cursor: Cursor, key: u32, value: &Row) {
+fn leaf_node_split_and_insert<T: Storage>(cursor: Cursor<T>, key: u32, value: &Row) {
     // Create a new node and move half the cells over.
     // Insert the new value in one of the two nodes.
     // Update parent or create a new parent.
@@ -584,7 +588,7 @@ fn leaf_node_split_and_insert(cursor: Cursor, key: u32, value: &Row) {
     }
 }
 
-pub(crate) fn leaf_node_insert(mut cursor: Cursor, key: u32, value: &Row) {
+pub(crate) fn leaf_node_insert<T: Storage>(mut cursor: Cursor<T>, key: u32, value: &Row) {
     let num_cells = cursor.node.num_cells();
     if num_cells >= LEAF_NODE_MAX_CELLS as u32 {
         // Node full

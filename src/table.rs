@@ -1,17 +1,18 @@
 use crate::node::{LeafNode, Node};
 use crate::pager::{Pager, PAGE_SIZE};
+use crate::storage::Storage;
 use libc::{c_void, memcpy};
 
-pub struct Table {
-    pub pager: Pager,
+pub struct Table<T> {
+    pub pager: Pager<T>,
     root_page_num: u32,
 }
 
-impl Table {
+impl<T: Storage> Table<T> {
     /// Return the position of the given key.
     /// If the key is not present, return the position
     /// where it should be inserted.
-    pub fn find(&mut self, key: u32) -> Cursor {
+    pub fn find(&mut self, key: u32) -> Cursor<T> {
         let root_page_num = self.root_page_num;
         let root_node = self.pager.page(root_page_num as usize);
 
@@ -21,14 +22,14 @@ impl Table {
         }
     }
 
-    pub fn start(&mut self) -> Cursor {
+    pub fn start(&mut self) -> Cursor<T> {
         let mut cursor = self.find(0);
         let num_cells = cursor.node.num_cells();
         cursor.end_of_table = num_cells == 0;
         cursor
     }
 
-    pub fn open(filename: &str) -> Table {
+    pub fn open(filename: &str) -> Table<T> {
         let mut pager = Pager::open(filename);
         if pager.num_pages == 0 {
             // New database file. Initialize page 0 as leaf node.
@@ -88,15 +89,15 @@ impl Table {
 }
 
 /// Leaf node iterator
-pub struct Cursor {
-    pub table: *mut Table,
+pub struct Cursor<T> {
+    pub table: *mut Table<T>,
     pub cell_num: u32,
     /// Indicates a position one past the last element
     pub end_of_table: bool,
     pub node: LeafNode,
 }
 
-impl Cursor {
+impl<T: Storage> Cursor<T> {
     pub fn value(&mut self) -> *mut u8 {
         self.node.value(self.cell_num)
     }

@@ -4,6 +4,7 @@ use crate::node::{
 };
 use crate::pager::Pager;
 use crate::serialization::ROW_SIZE;
+use crate::storage::Storage;
 use std::io::{BufRead, Write};
 
 pub fn print_prompt() {
@@ -27,7 +28,7 @@ pub fn print_constants() {
     println!("LEAF_NODE_MAX_CELLS: {}", LEAF_NODE_MAX_CELLS);
 }
 
-pub fn print_tree(pager: &mut Pager, page_num: u32, indentation_level: u32) {
+pub fn print_tree<T: Storage>(pager: &mut Pager<T>, page_num: u32, indentation_level: u32) {
     let node = pager.page(page_num as usize);
 
     match node {

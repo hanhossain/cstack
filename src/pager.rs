@@ -1,33 +1,27 @@
 use crate::node::{CommonNode, InternalNode, LeafNode, Node};
-use std::fs::{File, OpenOptions};
-use std::io::{Read, Seek, SeekFrom, Write};
+use crate::storage::Storage;
 
 pub const TABLE_MAX_PAGES: usize = 100;
 pub const PAGE_SIZE: usize = 4096;
 
-pub struct Pager {
-    file: File,
+pub struct Pager<T> {
+    storage: T,
     file_length: u32,
     pub num_pages: u32,
     pages: [Option<Box<[u8; PAGE_SIZE]>>; TABLE_MAX_PAGES],
 }
 
-impl Pager {
-    pub fn open(filename: &str) -> Pager {
-        let mut file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .open(filename)
-            .unwrap();
+impl<T: Storage> Pager<T> {
+    pub fn open(filename: &str) -> Pager<T> {
+        let mut storage = T::new(filename);
 
-        let file_length = file.seek(SeekFrom::End(0)).unwrap();
+        let file_length = storage.size();
         if file_length as usize % PAGE_SIZE != 0 {
             panic!("Db file is not a whole number of pages. Corrupt file.");
         }
 
         Pager {
-            file,
+            storage,
             file_length: file_length as u32,
             num_pages: file_length as u32 / PAGE_SIZE as u32,
             pages: std::array::from_fn(|_| None),
@@ -79,10 +73,7 @@ impl Pager {
             }
 
             if page_num <= num_pages {
-                self.file
-                    .seek(SeekFrom::Start(page_num as u64 * PAGE_SIZE as u64))
-                    .unwrap();
-                self.file.read(page.as_mut_slice()).unwrap();
+                self.storage.read(page_num, page.as_mut_slice());
             }
 
             self.pages[page_num] = Some(page);
@@ -100,11 +91,7 @@ impl Pager {
         let page = self.pages[page_num]
             .as_ref()
             .expect("Tried to flush null page");
-        self.file
-            .seek(SeekFrom::Start(page_num as u64 * PAGE_SIZE as u64))
-            .unwrap();
-
-        self.file.write_all(page.as_slice()).unwrap();
+        self.storage.write(page_num, page.as_slice());
     }
 
     // TODO: Until we start recycling free pages, new pages will always
