@@ -3,6 +3,7 @@ use crate::repl::{print_constants, print_tree};
 use crate::serialization::{deserialize_row, Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE};
 use crate::storage::Storage;
 use crate::table::Table;
+use crate::Logger;
 use libc::{strcpy, EXIT_SUCCESS};
 use std::ffi::CString;
 use std::process::exit;
@@ -102,6 +103,7 @@ pub fn do_meta_command<T: Storage>(
     }
 }
 
+#[derive(Debug)]
 pub enum ExecuteError {
     DuplicateKey,
 }
@@ -122,37 +124,59 @@ fn execute_insert<T: Storage>(row: &Row, table: &mut Table<T>) -> Result<(), Exe
     Ok(())
 }
 
-fn execute_select<T: Storage>(
+fn execute_select<T: Storage, L: Logger>(
     _statement: &Statement,
     table: &mut Table<T>,
+    logger: &L,
 ) -> Result<(), ExecuteError> {
     let mut cursor = table.start();
     while !cursor.end_of_table {
         let mut row = Row::new();
         unsafe {
             deserialize_row(cursor.value(), &mut row);
-            row.print_row();
         }
+        logger.print_row(&row);
         cursor.advance();
     }
 
     Ok(())
 }
 
-pub fn execute_statement<T: Storage>(
+pub fn execute_statement<T: Storage, L: Logger>(
     statement: &Statement,
     table: &mut Table<T>,
+    logger: &L,
 ) -> Result<(), ExecuteError> {
     match statement {
         Statement::Insert(row) => execute_insert(row, table),
-        Statement::Select => execute_select(statement, table),
+        Statement::Select => execute_select(statement, table, logger),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{assert_eq, format};
+    use crate::storage::InMemoryStorage;
+    use std::sync::Mutex;
+
+    struct InMemoryLogger {
+        logs: Mutex<Vec<String>>,
+    }
+
+    impl InMemoryLogger {
+        fn new() -> InMemoryLogger {
+            InMemoryLogger {
+                logs: Mutex::new(Vec::new()),
+            }
+        }
+    }
+
+    impl Logger for InMemoryLogger {
+        fn print_row(&self, row: &Row) {
+            let mut logs = self.logs.lock().unwrap();
+            logs.push(format!("{}", row));
+        }
+    }
 
     #[test]
     fn strings_too_long() {
@@ -168,5 +192,28 @@ mod tests {
         let query = "insert -1 cstack foo@bar.com";
         let result = Statement::try_from(query).unwrap_err();
         assert_eq!(result, PrepareError::NegativeId);
+    }
+
+    #[test]
+    fn select_nothing() {
+        let logger = InMemoryLogger::new();
+        let mut table: Table<InMemoryStorage> = Table::open("foobar");
+        execute_select(&Statement::Select, &mut table, &logger).unwrap();
+
+        let logs = logger.logs.into_inner().unwrap();
+        assert_eq!(logs.len(), 0);
+    }
+
+    #[test]
+    fn insert_and_select() {
+        let logger = InMemoryLogger::new();
+        let mut table: Table<InMemoryStorage> = Table::open("foobar");
+
+        let insert_statement = Statement::try_from("insert 1 a b").unwrap();
+        execute_statement(&insert_statement, &mut table, &logger).unwrap();
+
+        execute_select(&Statement::Select, &mut table, &logger).unwrap();
+        let logs = logger.logs.into_inner().unwrap();
+        assert_eq!(logs, vec!["(1, a, b)"])
     }
 }

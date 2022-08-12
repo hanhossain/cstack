@@ -1,5 +1,6 @@
 use libc::{c_char, c_void, memcpy};
 use std::ffi::CStr;
+use std::fmt::{Display, Formatter};
 
 pub const COLUMN_USERNAME_SIZE: usize = 32;
 pub const COLUMN_EMAIL_SIZE: usize = 255;
@@ -26,11 +27,13 @@ impl Row {
             username: [0; USERNAME_SIZE],
         }
     }
+}
 
-    pub unsafe fn print_row(&self) {
-        let username = ptr_to_str(&self.username);
-        let email = ptr_to_str(&self.email);
-        println!("({}, {}, {})", self.id, username, email);
+impl Display for Row {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let username = unsafe { ptr_to_str(&self.username) };
+        let email = unsafe { ptr_to_str(&self.email) };
+        f.write_fmt(format_args!("({}, {}, {})", self.id, username, email))
     }
 }
 

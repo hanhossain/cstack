@@ -43,3 +43,40 @@ impl Storage for FileStorage {
         self.file.flush().unwrap();
     }
 }
+
+#[cfg(test)]
+pub struct InMemoryStorage {
+    _filename: String,
+    pages: Vec<Vec<u8>>,
+}
+
+#[cfg(test)]
+impl Storage for InMemoryStorage {
+    fn new(filename: &str) -> Self {
+        Self {
+            _filename: filename.to_owned(),
+            pages: Vec::new(),
+        }
+    }
+
+    fn size(&mut self) -> u64 {
+        let mut size = 0;
+
+        for page in &self.pages {
+            size += page.len();
+        }
+
+        size as u64
+    }
+
+    fn read(&mut self, page_num: usize, buf: &mut [u8]) {
+        if let Some(page) = self.pages.get(page_num) {
+            buf.copy_from_slice(page.as_slice());
+        }
+    }
+
+    fn write(&mut self, page_num: usize, buf: &[u8]) {
+        let page = &mut self.pages[page_num];
+        page.copy_from_slice(buf);
+    }
+}

@@ -1,3 +1,5 @@
+extern crate core;
+
 mod node;
 mod pager;
 mod repl;
@@ -6,6 +8,7 @@ mod storage;
 mod table;
 mod vm;
 
+use crate::serialization::Row;
 use crate::storage::FileStorage;
 use crate::vm::Statement;
 use repl::{print_prompt, read_input};
@@ -18,6 +21,7 @@ fn main() {
         .next()
         .expect("Must supply a database filename");
     let mut table: Table<FileStorage> = Table::open(&filename);
+    let logger = ConsoleLogger;
 
     loop {
         print_prompt();
@@ -59,7 +63,7 @@ fn main() {
             },
         };
 
-        match execute_statement(&statement, &mut table) {
+        match execute_statement(&statement, &mut table, &logger) {
             Ok(_) => {
                 println!("Executed.");
             }
@@ -67,5 +71,16 @@ fn main() {
                 println!("Error: Duplicate key.");
             }
         }
+    }
+}
+
+pub trait Logger {
+    fn print_row(&self, row: &Row);
+}
+
+struct ConsoleLogger;
+impl Logger for ConsoleLogger {
+    fn print_row(&self, row: &Row) {
+        println!("{}", row);
     }
 }
