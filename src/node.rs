@@ -400,8 +400,7 @@ impl InternalNode {
         self.set_num_keys(original_num_keys + 1);
 
         if original_num_keys as usize >= INTERNAL_NODE_MAX_CELLS {
-            println!("Need to implement splitting internal node");
-            exit(EXIT_FAILURE);
+            panic!("Need to implement splitting internal node");
         }
 
         let right_child_page_num = self.right_child();

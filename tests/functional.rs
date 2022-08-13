@@ -52,60 +52,6 @@ impl Drop for Database {
 }
 
 #[test]
-fn insert_retrieve_row() {
-    let db = Database::new();
-    let lines = db.run_script(vec![
-        "insert 1 user1 person1@example.com",
-        "select",
-        ".exit",
-    ]);
-    let expected = vec![
-        "db > Executed.",
-        "db > (1, user1, person1@example.com)",
-        "Executed.",
-        "db > ",
-    ];
-    assert_eq!(lines, expected);
-}
-
-#[test]
-fn table_full_error() {
-    let mut input: Vec<_> = (0..1401)
-        .map(|i| format!("insert {i} user{i} person{i}@email.com"))
-        .collect();
-    input.push(String::from(".exit"));
-    let db = Database::new();
-    let output = db.run_script(input);
-    assert_eq!(
-        &output[output.len() - 2..],
-        &vec![
-            "db > Executed.",
-            "db > Need to implement splitting internal node",
-        ]
-    );
-}
-
-#[test]
-fn insert_strings_of_max_length() {
-    let username = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    let email: String = std::iter::repeat("a").take(255).collect();
-    let input = vec![
-        format!("insert 1 {username} {email}"),
-        String::from("select"),
-        String::from(".exit"),
-    ];
-    let db = Database::new();
-    let output = db.run_script(input);
-    let expected = vec![
-        String::from("db > Executed."),
-        format!("db > (1, {username}, {email})"),
-        String::from("Executed."),
-        String::from("db > "),
-    ];
-    assert_eq!(output, expected);
-}
-
-#[test]
 fn close_connection_keep_data() {
     let db = Database::new();
     let output = db.run_script(vec!["insert 1 user1 person1@example.com", ".exit"]);
@@ -114,18 +60,6 @@ fn close_connection_keep_data() {
 
     let output = db.run_script(vec!["select", ".exit"]);
     let expected = vec!["db > (1, user1, person1@example.com)", "Executed.", "db > "];
-    assert_eq!(output, expected);
-}
-
-#[test]
-fn open_and_close_sanity_check() {
-    let db = Database::new();
-    let output = db.run_script(vec![".exit"]);
-    let expected = vec!["db > "];
-    assert_eq!(output, expected);
-
-    let output = db.run_script(vec!["select", ".exit"]);
-    let expected = vec!["db > Executed.", "db > "];
     assert_eq!(output, expected);
 }
 
@@ -211,26 +145,6 @@ fn prints_structure_of_three_node_btree() {
             "db > ",
         ]
     )
-}
-
-#[test]
-fn duplicate_id_error() {
-    let input = vec![
-        "insert 1 user1 person1@example.com",
-        "insert 1 user1 person1@example.com",
-        "select",
-        ".exit",
-    ];
-    let db = Database::new();
-    let output = db.run_script(input);
-    let expected = vec![
-        "db > Executed.",
-        "db > Error: Duplicate key.",
-        "db > (1, user1, person1@example.com)",
-        "Executed.",
-        "db > ",
-    ];
-    assert_eq!(output, expected);
 }
 
 #[test]

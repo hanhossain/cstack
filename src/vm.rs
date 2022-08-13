@@ -103,7 +103,7 @@ pub fn do_meta_command<T: Storage>(
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ExecuteError {
     DuplicateKey,
 }
@@ -215,5 +215,49 @@ mod tests {
         execute_select(&Statement::Select, &mut table, &logger).unwrap();
         let logs = logger.logs.into_inner().unwrap();
         assert_eq!(logs, vec!["(1, a, b)"])
+    }
+
+    #[test]
+    #[should_panic(expected = "Need to implement splitting internal node")]
+    fn table_full() {
+        let queries: Vec<_> = (0..1401)
+            .map(|i| format!("insert {i} user{i} person{i}@email.com"))
+            .collect();
+        let logger = InMemoryLogger::new();
+        let mut table: Table<InMemoryStorage> = Table::open("foobar");
+
+        for query in &queries {
+            let statement = Statement::try_from(query.as_str()).unwrap();
+            execute_statement(&statement, &mut table, &logger).unwrap();
+        }
+    }
+
+    #[test]
+    fn insert_duplicate_id() {
+        let statement = Statement::try_from("insert 1 foo bar").unwrap();
+
+        let logger = InMemoryLogger::new();
+        let mut table: Table<InMemoryStorage> = Table::open("foobar");
+
+        execute_statement(&statement, &mut table, &logger).unwrap();
+        let error = execute_statement(&statement, &mut table, &logger).unwrap_err();
+        assert_eq!(error, ExecuteError::DuplicateKey);
+    }
+
+    #[test]
+    fn insert_strings_of_max_length() {
+        let username = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        let email: String = std::iter::repeat("a").take(255).collect();
+        let query = format!("insert 1 {} {}", username, email);
+        let statement = Statement::try_from(query.as_str()).unwrap();
+
+        let logger = InMemoryLogger::new();
+        let mut table: Table<InMemoryStorage> = Table::open("foobar");
+
+        execute_statement(&statement, &mut table, &logger).unwrap();
+        execute_statement(&Statement::Select, &mut table, &logger).unwrap();
+
+        let logs = logger.logs.into_inner().unwrap();
+        assert_eq!(logs, vec![format!("(1, {}, {})", username, email)]);
     }
 }

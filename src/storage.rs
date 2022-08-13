@@ -1,4 +1,6 @@
 use crate::pager::PAGE_SIZE;
+#[cfg(test)]
+use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 
@@ -47,7 +49,7 @@ impl Storage for FileStorage {
 #[cfg(test)]
 pub struct InMemoryStorage {
     _filename: String,
-    pages: Vec<Vec<u8>>,
+    pages: HashMap<usize, [u8; PAGE_SIZE]>,
 }
 
 #[cfg(test)]
@@ -55,28 +57,48 @@ impl Storage for InMemoryStorage {
     fn new(filename: &str) -> Self {
         Self {
             _filename: filename.to_owned(),
-            pages: Vec::new(),
+            pages: HashMap::new(),
         }
     }
 
     fn size(&mut self) -> u64 {
-        let mut size = 0;
-
-        for page in &self.pages {
-            size += page.len();
-        }
-
-        size as u64
+        (self.pages.len() * PAGE_SIZE) as u64
     }
 
     fn read(&mut self, page_num: usize, buf: &mut [u8]) {
-        if let Some(page) = self.pages.get(page_num) {
+        if let Some(page) = self.pages.get(&page_num) {
             buf.copy_from_slice(page.as_slice());
         }
     }
 
     fn write(&mut self, page_num: usize, buf: &[u8]) {
-        let page = &mut self.pages[page_num];
-        page.copy_from_slice(buf);
+        if self.pages.get(&page_num).is_none() {
+            self.pages.insert(page_num, [0u8; PAGE_SIZE]);
+        }
+        let page = self.pages.get_mut(&page_num).unwrap();
+        page[..buf.len()].copy_from_slice(buf);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn in_memory_sanity() {
+        let mut storage = InMemoryStorage::new("foobar");
+        let text1 = b"first";
+        storage.write(0, text1);
+
+        let text2 = b"second";
+        storage.write(1, text2);
+
+        let mut buf = [0u8; PAGE_SIZE];
+        storage.read(0, &mut buf);
+        assert_eq!(text1, &buf[..text1.len()]);
+
+        let mut buf = [0u8; PAGE_SIZE];
+        storage.read(1, &mut buf);
+        assert_eq!(text2, &buf[..text2.len()]);
     }
 }

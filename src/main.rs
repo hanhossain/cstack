@@ -1,5 +1,3 @@
-extern crate core;
-
 mod node;
 mod pager;
 mod repl;
