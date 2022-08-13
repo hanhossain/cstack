@@ -7,7 +7,7 @@ mod table;
 mod vm;
 
 use crate::serialization::Row;
-use crate::storage::FileStorage;
+use crate::storage::{FileStorage, FileStorageFactory};
 use crate::vm::Statement;
 use repl::{print_prompt, read_input};
 use table::Table;
@@ -18,7 +18,8 @@ fn main() {
         .skip(1)
         .next()
         .expect("Must supply a database filename");
-    let mut table: Table<FileStorage> = Table::open(&filename);
+    let mut storage_factory = FileStorageFactory;
+    let mut table: Table<FileStorage> = Table::open(&mut storage_factory, &filename);
     let logger = ConsoleLogger;
 
     loop {

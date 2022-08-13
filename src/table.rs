@@ -1,13 +1,13 @@
 use crate::node::{LeafNode, Node};
 use crate::pager::Pager;
-use crate::storage::Storage;
+use crate::storage::{Storage, StorageFactory};
 
 pub struct Table<T> {
     pub pager: Pager<T>,
     root_page_num: u32,
 }
 
-impl<T: Storage> Table<T> {
+impl<'a, T: Storage + 'a> Table<T> {
     /// Return the position of the given key.
     /// If the key is not present, return the position
     /// where it should be inserted.
@@ -28,8 +28,11 @@ impl<T: Storage> Table<T> {
         cursor
     }
 
-    pub fn open(filename: &str) -> Table<T> {
-        let mut pager = Pager::open(filename);
+    pub fn open<F: StorageFactory<'a, T>>(
+        storage_factory: &'a mut F,
+        filename: &'a str,
+    ) -> Table<T> {
+        let mut pager = Pager::open(storage_factory, filename);
         if pager.num_pages == 0 {
             // New database file. Initialize page 0 as leaf node.
             let mut root_node = pager.new_leaf_page(0);

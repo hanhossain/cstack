@@ -52,18 +52,6 @@ impl Drop for Database {
 }
 
 #[test]
-fn close_connection_keep_data() {
-    let db = Database::new();
-    let output = db.run_script(vec!["insert 1 user1 person1@example.com", ".exit"]);
-    let expected = vec!["db > Executed.", "db > "];
-    assert_eq!(output, expected);
-
-    let output = db.run_script(vec!["select", ".exit"]);
-    let expected = vec!["db > (1, user1, person1@example.com)", "Executed.", "db > "];
-    assert_eq!(output, expected);
-}
-
-#[test]
 fn prints_constants() {
     let db = Database::new();
     let output = db.run_script(vec![".constants", ".exit"]);

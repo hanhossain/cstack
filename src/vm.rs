@@ -156,7 +156,7 @@ pub fn execute_statement<T: Storage, L: Logger>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::storage::InMemoryStorage;
+    use crate::storage::InMemoryStorageFactory;
     use std::sync::Mutex;
 
     struct InMemoryLogger {
@@ -197,7 +197,8 @@ mod tests {
     #[test]
     fn select_nothing() {
         let logger = InMemoryLogger::new();
-        let mut table: Table<InMemoryStorage> = Table::open("foobar");
+        let mut storage_factory = InMemoryStorageFactory::new();
+        let mut table = Table::open(&mut storage_factory, "foobar");
         execute_select(&Statement::Select, &mut table, &logger).unwrap();
 
         let logs = logger.logs.into_inner().unwrap();
@@ -207,7 +208,8 @@ mod tests {
     #[test]
     fn insert_and_select() {
         let logger = InMemoryLogger::new();
-        let mut table: Table<InMemoryStorage> = Table::open("foobar");
+        let mut storage_factory = InMemoryStorageFactory::new();
+        let mut table = Table::open(&mut storage_factory, "foobar");
 
         let insert_statement = Statement::try_from("insert 1 a b").unwrap();
         execute_statement(&insert_statement, &mut table, &logger).unwrap();
@@ -224,7 +226,8 @@ mod tests {
             .map(|i| format!("insert {i} user{i} person{i}@email.com"))
             .collect();
         let logger = InMemoryLogger::new();
-        let mut table: Table<InMemoryStorage> = Table::open("foobar");
+        let mut storage_factory = InMemoryStorageFactory::new();
+        let mut table = Table::open(&mut storage_factory, "foobar");
 
         for query in &queries {
             let statement = Statement::try_from(query.as_str()).unwrap();
@@ -237,7 +240,8 @@ mod tests {
         let statement = Statement::try_from("insert 1 foo bar").unwrap();
 
         let logger = InMemoryLogger::new();
-        let mut table: Table<InMemoryStorage> = Table::open("foobar");
+        let mut storage_factory = InMemoryStorageFactory::new();
+        let mut table = Table::open(&mut storage_factory, "foobar");
 
         execute_statement(&statement, &mut table, &logger).unwrap();
         let error = execute_statement(&statement, &mut table, &logger).unwrap_err();
@@ -252,12 +256,35 @@ mod tests {
         let statement = Statement::try_from(query.as_str()).unwrap();
 
         let logger = InMemoryLogger::new();
-        let mut table: Table<InMemoryStorage> = Table::open("foobar");
+        let mut storage_factory = InMemoryStorageFactory::new();
+        let mut table = Table::open(&mut storage_factory, "foobar");
 
         execute_statement(&statement, &mut table, &logger).unwrap();
         execute_statement(&Statement::Select, &mut table, &logger).unwrap();
 
         let logs = logger.logs.into_inner().unwrap();
         assert_eq!(logs, vec![format!("(1, {}, {})", username, email)]);
+    }
+
+    #[test]
+    fn keep_data_after_close() {
+        let statement = Statement::try_from("insert 1 foo bar").unwrap();
+        let mut storage_factory = InMemoryStorageFactory::new();
+
+        {
+            let logger = InMemoryLogger::new();
+            let mut table = Table::open(&mut storage_factory, "foobar");
+            execute_statement(&statement, &mut table, &logger).unwrap();
+            table.close();
+        }
+
+        {
+            let logger = InMemoryLogger::new();
+            let mut table = Table::open(&mut storage_factory, "foobar");
+            execute_statement(&Statement::Select, &mut table, &logger).unwrap();
+
+            let logs = logger.logs.into_inner().unwrap();
+            assert_eq!(logs, vec!["(1, foo, bar)"]);
+        }
     }
 }

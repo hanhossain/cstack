@@ -1,5 +1,5 @@
 use crate::node::{CommonNode, InternalNode, LeafNode, Node};
-use crate::storage::Storage;
+use crate::storage::{Storage, StorageFactory};
 
 pub const TABLE_MAX_PAGES: usize = 100;
 pub const PAGE_SIZE: usize = 4096;
@@ -11,9 +11,12 @@ pub struct Pager<T> {
     pages: [Option<Box<[u8; PAGE_SIZE]>>; TABLE_MAX_PAGES],
 }
 
-impl<T: Storage> Pager<T> {
-    pub fn open(filename: &str) -> Pager<T> {
-        let mut storage = T::new(filename);
+impl<'a, T: Storage + 'a> Pager<T> {
+    pub fn open<F: StorageFactory<'a, T>>(
+        storage_factory: &'a mut F,
+        filename: &'a str,
+    ) -> Pager<T> {
+        let mut storage = storage_factory.open(filename);
 
         let file_length = storage.size();
         if file_length as usize % PAGE_SIZE != 0 {
