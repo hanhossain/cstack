@@ -632,7 +632,5 @@ pub(crate) fn leaf_node_insert<T: Storage>(mut cursor: Cursor<T>, key: u32, valu
 
     cursor.node.set_num_cells(cursor.node.num_cells() + 1);
     cursor.node.set_key(cursor.cell_num, key);
-    unsafe {
-        serialize_row(value, cursor.node.value_mut(cursor.cell_num));
-    }
+    serialize_row(value, cursor.node.value_mut(cursor.cell_num));
 }

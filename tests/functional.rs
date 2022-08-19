@@ -59,10 +59,10 @@ fn prints_constants() {
         output,
         vec![
             "db > Constants:",
-            "ROW_SIZE: 293",
+            "ROW_SIZE: 299",
             "COMMON_NODE_HEADER_SIZE: 8",
             "LEAF_NODE_HEADER_SIZE: 16",
-            "LEAF_NODE_CELL_SIZE: 297",
+            "LEAF_NODE_CELL_SIZE: 303",
             "LEAF_NODE_SPACE_FOR_CELLS: 4080",
             "LEAF_NODE_MAX_CELLS: 13",
             "db > ",

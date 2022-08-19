@@ -1,11 +1,10 @@
 use crate::node::leaf_node_insert;
 use crate::repl::{print_constants, print_tree};
-use crate::serialization::{deserialize_row, Row, COLUMN_EMAIL_SIZE, COLUMN_USERNAME_SIZE};
+use crate::serialization::{deserialize_row, Row, EMAIL_SIZE, USERNAME_SIZE};
 use crate::storage::Storage;
 use crate::table::Table;
 use crate::Logger;
-use libc::{strcpy, EXIT_SUCCESS};
-use std::ffi::CString;
+use libc::EXIT_SUCCESS;
 use std::process::exit;
 use std::str::FromStr;
 
@@ -55,23 +54,15 @@ fn prepare_insert(input: &str) -> Result<Statement, PrepareError> {
         return Err(PrepareError::NegativeId);
     }
 
-    if username.len() > COLUMN_USERNAME_SIZE || email.len() > COLUMN_EMAIL_SIZE {
+    if username.as_bytes().len() > USERNAME_SIZE || email.as_bytes().len() > EMAIL_SIZE {
         return Err(PrepareError::StringTooLong);
     }
 
-    let mut row = Row::new();
-
-    row.id = id as u32;
-    unsafe {
-        strcpy(
-            row.username.as_mut_ptr(),
-            CString::new(username).unwrap().as_ptr(),
-        );
-        strcpy(
-            row.email.as_mut_ptr(),
-            CString::new(email).unwrap().as_ptr(),
-        );
-    }
+    let row = Row {
+        id: id as u32,
+        username: username.to_string(),
+        email: email.to_string(),
+    };
 
     Ok(Statement::Insert(row))
 }
@@ -131,10 +122,7 @@ fn execute_select<T: Storage, L: Logger>(
 ) -> Result<(), ExecuteError> {
     let mut cursor = table.start();
     while !cursor.end_of_table {
-        let mut row = Row::new();
-        unsafe {
-            deserialize_row(cursor.value(), &mut row);
-        }
+        let row = deserialize_row(cursor.value());
         logger.print_row(&row);
         cursor.advance();
     }

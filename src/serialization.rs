@@ -1,86 +1,98 @@
-use libc::{c_char, c_void, memcpy};
-use std::ffi::CStr;
 use std::fmt::{Display, Formatter};
+use std::mem::size_of;
 
-pub const COLUMN_USERNAME_SIZE: usize = 32;
-pub const COLUMN_EMAIL_SIZE: usize = 255;
-pub const USERNAME_SIZE: usize = COLUMN_USERNAME_SIZE + 1;
-pub const EMAIL_SIZE: usize = COLUMN_EMAIL_SIZE + 1;
 pub const ID_SIZE: usize = 4;
 pub const ID_OFFSET: usize = 0;
-pub const USERNAME_OFFSET: usize = ID_OFFSET + ID_SIZE;
-pub const EMAIL_OFFSET: usize = USERNAME_OFFSET + USERNAME_SIZE;
-pub const ROW_SIZE: usize = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
+pub const USERNAME_SIZE_SIZE: usize = size_of::<u32>();
+pub const USERNAME_SIZE_OFFSET: usize = ID_OFFSET + ID_SIZE;
+pub const USERNAME_SIZE: usize = 32;
+pub const USERNAME_OFFSET: usize = USERNAME_SIZE_OFFSET + USERNAME_SIZE_SIZE;
+pub const EMAIL_SIZE_SIZE: usize = size_of::<u32>();
+pub const EMAIL_SIZE_OFFSET: usize = USERNAME_OFFSET + USERNAME_SIZE;
+pub const EMAIL_SIZE: usize = 255;
+pub const EMAIL_OFFSET: usize = EMAIL_SIZE_OFFSET + EMAIL_SIZE_SIZE;
+pub const ROW_SIZE: usize =
+    ID_SIZE + USERNAME_SIZE_SIZE + USERNAME_SIZE + EMAIL_SIZE_SIZE + EMAIL_SIZE;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Row {
     pub id: u32,
-    pub username: [c_char; USERNAME_SIZE],
-    pub email: [c_char; EMAIL_SIZE],
-}
-
-impl Row {
-    pub fn new() -> Row {
-        Row {
-            id: 0,
-            email: [0; EMAIL_SIZE],
-            username: [0; USERNAME_SIZE],
-        }
-    }
+    pub username: String,
+    pub email: String,
 }
 
 impl Display for Row {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let username = unsafe { ptr_to_str(&self.username) };
-        let email = unsafe { ptr_to_str(&self.email) };
-        f.write_fmt(format_args!("({}, {}, {})", self.id, username, email))
+        f.write_fmt(format_args!(
+            "({}, {}, {})",
+            self.id, self.username, self.email
+        ))
     }
 }
 
-pub(crate) unsafe fn serialize_row(source: &Row, destination: &mut [u8]) {
-    let destination = destination.as_mut_ptr();
-    memcpy(
-        destination.add(ID_OFFSET) as *mut c_void,
-        &source.id as *const u32 as *const c_void,
-        ID_SIZE,
-    );
+pub fn serialize_row(source: &Row, destination: &mut [u8]) {
+    let id_bytes = u32::to_ne_bytes(source.id);
+    destination[ID_OFFSET..ID_OFFSET + ID_SIZE].copy_from_slice(&id_bytes);
 
-    memcpy(
-        destination.add(USERNAME_OFFSET) as *mut c_void,
-        &source.username as *const c_char as *const c_void,
-        USERNAME_SIZE,
-    );
+    // serialize username size and username
+    let username_bytes = source.username.as_bytes();
+    destination[USERNAME_SIZE_OFFSET..USERNAME_SIZE_OFFSET + USERNAME_SIZE_SIZE]
+        .copy_from_slice(&u32::to_ne_bytes(username_bytes.len() as u32));
+    destination[USERNAME_OFFSET..USERNAME_OFFSET + username_bytes.len()]
+        .copy_from_slice(username_bytes);
 
-    memcpy(
-        destination.add(EMAIL_OFFSET) as *mut c_void,
-        &source.email as *const c_char as *const c_void,
-        EMAIL_SIZE,
-    );
+    // serialize email size and email
+    let email_bytes = source.email.as_bytes();
+    destination[EMAIL_SIZE_OFFSET..EMAIL_SIZE_OFFSET + EMAIL_SIZE_SIZE]
+        .copy_from_slice(&u32::to_ne_bytes(email_bytes.len() as u32));
+    destination[EMAIL_OFFSET..EMAIL_OFFSET + email_bytes.len()].copy_from_slice(email_bytes);
 }
 
-pub(crate) unsafe fn deserialize_row(source: &[u8], destination: &mut Row) {
-    let source = source.as_ptr();
-    memcpy(
-        &mut destination.id as *mut u32 as *mut c_void,
-        source.add(ID_OFFSET) as *const c_void,
-        ID_SIZE,
-    );
+pub fn deserialize_row(source: &[u8]) -> Row {
+    let mut id_bytes = [0u8; ID_SIZE];
+    id_bytes.copy_from_slice(&source[ID_OFFSET..ID_OFFSET + ID_SIZE]);
+    let id = u32::from_ne_bytes(id_bytes);
 
-    memcpy(
-        &mut destination.username as *mut c_char as *mut c_void,
-        source.add(USERNAME_OFFSET) as *const c_void,
-        USERNAME_SIZE,
-    );
+    // deserialize username size and username
+    let mut username_size_bytes = [0u8; USERNAME_SIZE_SIZE];
+    username_size_bytes
+        .copy_from_slice(&source[USERNAME_SIZE_OFFSET..USERNAME_SIZE_OFFSET + USERNAME_SIZE_SIZE]);
+    let username_size = u32::from_ne_bytes(username_size_bytes);
+    let username =
+        std::str::from_utf8(&source[USERNAME_OFFSET..USERNAME_OFFSET + username_size as usize])
+            .unwrap()
+            .to_string();
 
-    memcpy(
-        &mut destination.email as *mut c_char as *mut c_void,
-        source.add(EMAIL_OFFSET) as *const c_void,
-        EMAIL_SIZE,
-    );
+    // deserialize email size and email
+    let mut email_size_bytes = [0u8; EMAIL_SIZE_SIZE];
+    email_size_bytes
+        .copy_from_slice(&source[EMAIL_SIZE_OFFSET..EMAIL_SIZE_OFFSET + EMAIL_SIZE_SIZE]);
+    let email_size = u32::from_ne_bytes(email_size_bytes);
+    let email = std::str::from_utf8(&source[EMAIL_OFFSET..EMAIL_OFFSET + email_size as usize])
+        .unwrap()
+        .to_string();
+
+    Row {
+        id,
+        username,
+        email,
+    }
 }
 
-unsafe fn ptr_to_str(value: &[c_char]) -> &str {
-    CStr::from_ptr(value.as_ptr())
-        .to_str()
-        .expect("failed to convert from c_char")
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serialize_and_deserialize_row() {
+        let expected = Row {
+            id: 1234,
+            username: String::from("John Doe"),
+            email: String::from("johndoe@example.com"),
+        };
+        let mut row_bytes = [0u8; ROW_SIZE];
+        serialize_row(&expected, &mut row_bytes);
+        let actual = deserialize_row(&row_bytes);
+        assert_eq!(expected, actual);
+    }
 }
