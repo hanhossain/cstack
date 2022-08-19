@@ -1,5 +1,5 @@
 use crate::pager::PAGE_SIZE;
-use crate::serialization::{serialize_row, Row, ROW_SIZE};
+use crate::serialization::{Row, ROW_SIZE};
 use crate::storage::Storage;
 use crate::table::{Cursor, Table};
 use libc::{memcpy, EXIT_FAILURE};
@@ -571,7 +571,11 @@ fn leaf_node_split_and_insert<T: Storage>(cursor: Cursor<T>, key: u32, value: &R
 
         unsafe {
             if i == cursor.cell_num as i32 {
-                serialize_row(value, destination_node.value_mut(index_within_node as u32));
+                bincode::serialize_into(
+                    destination_node.value_mut(index_within_node as u32),
+                    value,
+                )
+                .unwrap();
                 destination_node.set_key(index_within_node as u32, key);
             } else if i > cursor.cell_num as i32 {
                 memcpy(
@@ -632,5 +636,5 @@ pub(crate) fn leaf_node_insert<T: Storage>(mut cursor: Cursor<T>, key: u32, valu
 
     cursor.node.set_num_cells(cursor.node.num_cells() + 1);
     cursor.node.set_key(cursor.cell_num, key);
-    serialize_row(value, cursor.node.value_mut(cursor.cell_num));
+    bincode::serialize_into(cursor.node.value_mut(cursor.cell_num), value).unwrap();
 }

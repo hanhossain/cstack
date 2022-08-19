@@ -1,6 +1,6 @@
 use crate::node::leaf_node_insert;
 use crate::repl::{print_constants, print_tree};
-use crate::serialization::{deserialize_row, Row, EMAIL_SIZE, USERNAME_SIZE};
+use crate::serialization::{Row, EMAIL_SIZE, USERNAME_SIZE};
 use crate::storage::Storage;
 use crate::table::Table;
 use crate::Logger;
@@ -122,7 +122,7 @@ fn execute_select<T: Storage, L: Logger>(
 ) -> Result<(), ExecuteError> {
     let mut cursor = table.start();
     while !cursor.end_of_table {
-        let row = deserialize_row(cursor.value());
+        let row = bincode::deserialize(cursor.value()).unwrap();
         logger.print_row(&row);
         cursor.advance();
     }
