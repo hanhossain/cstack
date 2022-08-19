@@ -471,9 +471,20 @@ impl LeafNode {
         }
     }
 
-    /// Get the pointer to the leaf node value.
-    pub fn value(&mut self, cell_num: u32) -> *mut u8 {
-        unsafe { self.cell(cell_num).add(LEAF_NODE_KEY_SIZE) }
+    /// Get a mutable slice to the leaf node value.
+    pub fn value_mut(&mut self, cell_num: u32) -> &mut [u8] {
+        unsafe {
+            let ptr = self.cell(cell_num).add(LEAF_NODE_KEY_SIZE);
+            std::slice::from_raw_parts_mut(ptr, ROW_SIZE)
+        }
+    }
+
+    /// Get a slice to the leaf node value
+    pub fn value(&self, cell_num: u32) -> &[u8] {
+        unsafe {
+            let ptr = self.cell(cell_num).add(LEAF_NODE_KEY_SIZE);
+            std::slice::from_raw_parts(ptr, ROW_SIZE)
+        }
     }
 
     /// Gets the location of the next leaf.
@@ -560,7 +571,7 @@ fn leaf_node_split_and_insert<T: Storage>(cursor: Cursor<T>, key: u32, value: &R
 
         unsafe {
             if i == cursor.cell_num as i32 {
-                serialize_row(value, destination_node.value(index_within_node as u32));
+                serialize_row(value, destination_node.value_mut(index_within_node as u32));
                 destination_node.set_key(index_within_node as u32, key);
             } else if i > cursor.cell_num as i32 {
                 memcpy(
@@ -622,6 +633,6 @@ pub(crate) fn leaf_node_insert<T: Storage>(mut cursor: Cursor<T>, key: u32, valu
     cursor.node.set_num_cells(cursor.node.num_cells() + 1);
     cursor.node.set_key(cursor.cell_num, key);
     unsafe {
-        serialize_row(value, cursor.node.value(cursor.cell_num));
+        serialize_row(value, cursor.node.value_mut(cursor.cell_num));
     }
 }

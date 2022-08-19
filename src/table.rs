@@ -94,7 +94,7 @@ pub struct Cursor<T> {
 }
 
 impl<T: Storage> Cursor<T> {
-    pub fn value(&mut self) -> *mut u8 {
+    pub fn value(&self) -> &[u8] {
         self.node.value(self.cell_num)
     }
 

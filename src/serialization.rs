@@ -37,7 +37,8 @@ impl Display for Row {
     }
 }
 
-pub(crate) unsafe fn serialize_row(source: &Row, destination: *mut u8) {
+pub(crate) unsafe fn serialize_row(source: &Row, destination: &mut [u8]) {
+    let destination = destination.as_mut_ptr();
     memcpy(
         destination.add(ID_OFFSET) as *mut c_void,
         &source.id as *const u32 as *const c_void,
@@ -57,7 +58,8 @@ pub(crate) unsafe fn serialize_row(source: &Row, destination: *mut u8) {
     );
 }
 
-pub(crate) unsafe fn deserialize_row(source: *const u8, destination: &mut Row) {
+pub(crate) unsafe fn deserialize_row(source: &[u8], destination: &mut Row) {
+    let source = source.as_ptr();
     memcpy(
         &mut destination.id as *mut u32 as *mut c_void,
         source.add(ID_OFFSET) as *const c_void,
