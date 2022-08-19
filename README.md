@@ -1,14 +1,7 @@
-# Build a sqlite clone
-- [x] Part 1 - Introduction and Setting up the REPL
-- [x] Part 2 - World’s Simplest SQL Compiler and Virtual Machine
-- [x] Part 3 - An In-Memory, Append-Only, Single-Table Database
-- [x] Part 4 - Our First Tests (and Bugs)
-- [x] Part 5 - Persistence to Disk
-- [x] Part 6 - The Cursor Abstraction
-- [x] Part 7 - Introduction to the B-Tree
-- [x] Part 8 - B-Tree Leaf Node Format
-- [x] Part 9 - Binary Search and Duplicate Keys
-- [x] Part 10 - Splitting a Leaf Node
-- [x] Part 11 - Recursively Searching the B-Tree
-- [x] Part 12 - Scanning a Multi-Level B-Tree
-- [x] Part 13 - Updating Parent Node After a Split
+# Build a sqlite clone with C and port it to Rust
+This is a sandbox on converting an existing C codebase to Rust.
+
+## Background
+Originally, it was a pure copy of https://cstack.github.io/db_tutorial/. Eventually it used cmake to build the C
+executable with bits and pieces migrated over to a static rust lib with C bindings. Over time, all C was removed and it
+moved to 100% Rust (albeit very unsafe). It is slowly moving over to idiomatic and safe rust.
