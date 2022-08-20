@@ -242,12 +242,13 @@ impl From<CommonNode> for InternalNode {
 }
 
 impl InternalNode {
-    // TODO: this should just be part of the new or from method
-    /// Initializes the internal node.
-    pub fn initialize(&mut self) {
-        self.node.set_node_type(NodeType::Internal);
-        self.node.set_root(false);
-        self.set_num_keys(0);
+    /// Initializes a `CommonNode` as an `InternalNode`.
+    pub fn new(mut node: CommonNode) -> Self {
+        node.set_node_type(NodeType::Internal);
+        node.set_root(false);
+        let mut internal = InternalNode { node };
+        internal.set_num_keys(0);
+        internal
     }
 
     /// Gets the number of keys in the node.
@@ -440,6 +441,16 @@ impl From<CommonNode> for LeafNode {
 }
 
 impl LeafNode {
+    /// Initialize a `CommonNode` as a `LeafNode`
+    pub fn new(mut node: CommonNode) -> Self {
+        node.set_node_type(NodeType::Leaf);
+        node.set_root(false);
+        let mut leaf = LeafNode { node };
+        leaf.set_num_cells(0);
+        leaf.set_next_leaf(0); // 0 represents no siblings
+        leaf
+    }
+
     /// Get the number of cells currently occupied in the node.
     pub fn num_cells(&self) -> u32 {
         unsafe { *(self.node.buffer.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32) }
@@ -497,13 +508,6 @@ impl LeafNode {
         unsafe {
             *(self.node.buffer.add(LEAF_NODE_NEXT_LEAF_OFFSET) as *mut u32) = next_leaf;
         }
-    }
-
-    pub fn initialize(&mut self) {
-        self.node.set_node_type(NodeType::Leaf);
-        self.node.set_root(false);
-        self.set_num_cells(0);
-        self.set_next_leaf(0); // 0 represents no sibling
     }
 
     /// Gets the max key in the node.

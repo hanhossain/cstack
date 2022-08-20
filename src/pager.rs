@@ -52,16 +52,12 @@ impl<'a, T: Storage + 'a> Pager<T> {
 
     pub fn new_leaf_page(&mut self, page_num: usize) -> LeafNode {
         let node = self.get_page(page_num as usize);
-        let mut node = LeafNode::from(node);
-        node.initialize();
-        node
+        LeafNode::new(node)
     }
 
     pub fn new_internal_page(&mut self, page_num: usize) -> InternalNode {
         let node = self.get_page(page_num as usize);
-        let mut node = InternalNode::from(node);
-        node.initialize();
-        node
+        InternalNode::new(node)
     }
 
     fn get_page(&mut self, page_num: usize) -> CommonNode {
