@@ -36,7 +36,6 @@ pub enum PrepareError {
     UnrecognizedStatement,
 }
 
-#[allow(temporary_cstring_as_ptr)]
 fn prepare_insert(input: &str) -> Result<Statement, PrepareError> {
     let mut splitter = input.split(" ");
     let _keyword = splitter.next();
