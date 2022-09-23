@@ -29,11 +29,19 @@ const MAX_CELLS: u32 = 3;
 #[derive(Debug)]
 pub struct InternalNode {
     pub node: CommonNode,
+    num_keys: u32,
+    right_child: u32,
 }
 
 impl From<CommonNode> for InternalNode {
     fn from(node: CommonNode) -> Self {
-        InternalNode { node }
+        let num_keys = unsafe { *(node.buffer.add(NUM_KEYS_OFFSET) as *mut u32) };
+        let right_child = unsafe { *(node.buffer.add(RIGHT_CHILD_OFFSET) as *mut u32) };
+        InternalNode {
+            node,
+            num_keys,
+            right_child,
+        }
     }
 }
 
@@ -42,14 +50,18 @@ impl InternalNode {
     pub fn new(mut node: CommonNode) -> Self {
         node.set_node_type(NodeType::Internal);
         node.set_root(false);
-        let mut internal = InternalNode { node };
+        let mut internal = InternalNode {
+            node,
+            num_keys: 0,
+            right_child: 0,
+        };
         internal.set_num_keys(0);
         internal
     }
 
     /// Gets the number of keys in the node.
     pub fn num_keys(&self) -> u32 {
-        unsafe { *(self.node.buffer.add(NUM_KEYS_OFFSET) as *mut u32) }
+        self.num_keys
     }
 
     /// Sets the number of keys in the node;
@@ -57,11 +69,12 @@ impl InternalNode {
         unsafe {
             *(self.node.buffer.add(NUM_KEYS_OFFSET) as *mut u32) = num_keys;
         }
+        self.num_keys = num_keys;
     }
 
     /// Gets the location of the right child.
     pub fn right_child(&self) -> u32 {
-        unsafe { *(self.node.buffer.add(RIGHT_CHILD_OFFSET) as *mut u32) }
+        self.right_child
     }
 
     /// Sets the location of the right child.
@@ -69,6 +82,7 @@ impl InternalNode {
         unsafe {
             *(self.node.buffer.add(RIGHT_CHILD_OFFSET) as *mut u32) = right_child;
         }
+        self.right_child = right_child;
     }
 
     /// Gets the location of the specific node cell.
