@@ -29,7 +29,7 @@ pub fn print_constants() {
 }
 
 pub fn print_tree<T: Storage>(pager: &mut Pager<T>, page_num: u32, indentation_level: u32) {
-    let node = pager.page(page_num as usize);
+    let node = pager.page(page_num);
 
     match node {
         Node::Leaf(leaf_node) => {

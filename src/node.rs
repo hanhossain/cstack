@@ -383,7 +383,7 @@ impl InternalNode {
     pub fn find<T: Storage>(&self, table: &mut Table<T>, key: u32) -> Cursor<T> {
         let child_index = self.find_child(key);
         let child_num = self.child(child_index);
-        let child = table.pager.page(child_num as usize);
+        let child = table.pager.page(child_num);
         match child {
             Node::Leaf(leaf) => leaf.find(table, key),
             Node::Internal(internal) => internal.find(table, key),
@@ -393,7 +393,7 @@ impl InternalNode {
     /// Add a child/key pair to node.
     fn insert<T: Storage>(&mut self, table: &mut Table<T>, child_page_num: u32) {
         let pager = &mut table.pager;
-        let child = pager.page(child_page_num as usize);
+        let child = pager.page(child_page_num);
         let child_max_key = child.get_max_key();
 
         let index = self.find_child(child_max_key);
@@ -405,7 +405,7 @@ impl InternalNode {
         }
 
         let right_child_page_num = self.right_child();
-        let right_child = pager.page(right_child_page_num as usize);
+        let right_child = pager.page(right_child_page_num);
         if child_max_key > right_child.get_max_key() {
             // Replace right child
             self.set_child(original_num_keys, right_child_page_num);
@@ -556,7 +556,7 @@ fn leaf_node_split_and_insert<T: Storage>(cursor: Cursor<T>, key: u32, value: &R
     let mut old_node = cursor.node;
     let old_max = old_node.get_max_key();
     let new_page_num = pager.get_unused_page_num();
-    let mut new_node = pager.new_leaf_page(new_page_num as usize);
+    let mut new_node = pager.new_leaf_page(new_page_num);
     new_node.node.set_parent(old_node.node.parent());
     new_node.set_next_leaf(old_node.next_leaf());
     old_node.set_next_leaf(new_page_num);
@@ -609,7 +609,7 @@ fn leaf_node_split_and_insert<T: Storage>(cursor: Cursor<T>, key: u32, value: &R
             let new_max = old_node.get_max_key();
             let mut parent = (&mut *cursor.table)
                 .pager
-                .page(parent_page_num as usize)
+                .page(parent_page_num)
                 .unwrap_internal();
             parent.update_key(old_max, new_max);
             parent.insert(&mut *cursor.table, new_page_num);

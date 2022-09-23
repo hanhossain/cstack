@@ -46,21 +46,22 @@ impl<'a, T: Storage + 'a> Pager<T> {
         }
     }
 
-    pub fn page(&mut self, page_num: usize) -> Node {
+    pub fn page(&mut self, page_num: u32) -> Node {
         Node::from(self.get_page(page_num))
     }
 
-    pub fn new_leaf_page(&mut self, page_num: usize) -> LeafNode {
-        let node = self.get_page(page_num as usize);
+    pub fn new_leaf_page(&mut self, page_num: u32) -> LeafNode {
+        let node = self.get_page(page_num);
         LeafNode::new(node)
     }
 
-    pub fn new_internal_page(&mut self, page_num: usize) -> InternalNode {
-        let node = self.get_page(page_num as usize);
+    pub fn new_internal_page(&mut self, page_num: u32) -> InternalNode {
+        let node = self.get_page(page_num);
         InternalNode::new(node)
     }
 
-    fn get_page(&mut self, page_num: usize) -> CommonNode {
+    fn get_page(&mut self, page_num: u32) -> CommonNode {
+        let page_num = page_num as usize;
         if self.pages[page_num].is_none() {
             // Cache miss. Allocate memory and load from file.
             let mut page = Box::new([0u8; PAGE_SIZE]);
