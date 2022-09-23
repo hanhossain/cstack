@@ -1,33 +1,25 @@
+pub mod common;
+
+use crate::node::common::{CommonNode, HEADER_SIZE};
 use crate::pager::PAGE_SIZE;
 use crate::serialization::{Row, ROW_SIZE};
 use crate::storage::Storage;
 use crate::table::{Cursor, Table};
 use libc::{memcpy, EXIT_FAILURE};
-use serde::{Deserialize, Serialize};
 use std::ffi::c_void;
 use std::mem::size_of;
 use std::process::exit;
-
-// Common Node Header Layout
-pub(crate) const COMMON_NODE_HEADER_SIZE: usize = size_of::<NodeHeader>();
-
-#[derive(Serialize, Deserialize)]
-struct NodeHeader {
-    r#type: u8,
-    is_root: u8,
-    parent: u32,
-}
 
 // Internal Node Header Layout
 //
 // | common header | num keys | right child |
 const INTERNAL_NODE_NUM_KEYS_SIZE: usize = size_of::<u32>();
-const INTERNAL_NODE_NUM_KEYS_OFFSET: usize = COMMON_NODE_HEADER_SIZE;
+const INTERNAL_NODE_NUM_KEYS_OFFSET: usize = HEADER_SIZE;
 const INTERNAL_NODE_RIGHT_CHILD_SIZE: usize = size_of::<u32>();
 const INTERNAL_NODE_RIGHT_CHILD_OFFSET: usize =
     INTERNAL_NODE_NUM_KEYS_OFFSET + INTERNAL_NODE_NUM_KEYS_SIZE;
 const INTERNAL_NODE_HEADER_SIZE: usize =
-    COMMON_NODE_HEADER_SIZE + INTERNAL_NODE_NUM_KEYS_SIZE + INTERNAL_NODE_RIGHT_CHILD_SIZE;
+    HEADER_SIZE + INTERNAL_NODE_NUM_KEYS_SIZE + INTERNAL_NODE_RIGHT_CHILD_SIZE;
 
 // Internal Node Body Layout
 const INTERNAL_NODE_KEY_SIZE: usize = size_of::<u32>();
@@ -38,11 +30,11 @@ const INTERNAL_NODE_CELL_SIZE: usize = INTERNAL_NODE_CHILD_SIZE + INTERNAL_NODE_
 //
 // | common header | num cells | next leaf |
 const LEAF_NODE_NUM_CELLS_SIZE: usize = size_of::<u32>();
-const LEAF_NODE_NUM_CELLS_OFFSET: usize = COMMON_NODE_HEADER_SIZE;
+const LEAF_NODE_NUM_CELLS_OFFSET: usize = HEADER_SIZE;
 const LEAF_NODE_NEXT_LEAF_SIZE: usize = size_of::<u32>();
 const LEAF_NODE_NEXT_LEAF_OFFSET: usize = LEAF_NODE_NUM_CELLS_OFFSET + LEAF_NODE_NUM_CELLS_SIZE;
 pub(crate) const LEAF_NODE_HEADER_SIZE: usize =
-    COMMON_NODE_HEADER_SIZE + LEAF_NODE_NUM_CELLS_SIZE + LEAF_NODE_NEXT_LEAF_SIZE;
+    HEADER_SIZE + LEAF_NODE_NUM_CELLS_SIZE + LEAF_NODE_NEXT_LEAF_SIZE;
 
 // Leaf Node Body Layout
 const LEAF_NODE_KEY_SIZE: usize = size_of::<u32>();
@@ -189,14 +181,14 @@ impl CommonNode {
     /// Gets the node type.
     pub fn node_type(&self) -> NodeType {
         let buffer = self.get_buffer();
-        let header: NodeHeader = bincode::deserialize(buffer).unwrap();
+        let header: Header = bincode::deserialize(buffer).unwrap();
         NodeType::from(header.r#type)
     }
 
     /// Sets the node type.
     fn set_node_type(&mut self, node_type: NodeType) {
         let buffer = self.get_buffer_mut();
-        let mut header: NodeHeader = bincode::deserialize(buffer).unwrap();
+        let mut header: Header = bincode::deserialize(buffer).unwrap();
         header.r#type = u8::from(node_type);
         bincode::serialize_into(buffer, &header).unwrap();
     }
@@ -204,7 +196,7 @@ impl CommonNode {
     /// Gets whether this node is the root.
     fn is_root(&self) -> bool {
         let buffer = self.get_buffer();
-        let header: NodeHeader = bincode::deserialize(buffer).unwrap();
+        let header: Header = bincode::deserialize(buffer).unwrap();
         header.is_root != 0
     }
 
@@ -212,7 +204,7 @@ impl CommonNode {
     pub fn set_root(&mut self, is_root: bool) {
         let buffer = self.get_buffer_mut();
         let value = if is_root { 1 } else { 0 };
-        let mut header: NodeHeader = bincode::deserialize(buffer).unwrap();
+        let mut header: Header = bincode::deserialize(buffer).unwrap();
         header.is_root = value;
         bincode::serialize_into(buffer, &header).unwrap();
     }
@@ -220,14 +212,14 @@ impl CommonNode {
     /// Gets the location for the parent node.
     fn parent(&self) -> u32 {
         let buffer = self.get_buffer();
-        let header: NodeHeader = bincode::deserialize(buffer).unwrap();
+        let header: Header = bincode::deserialize(buffer).unwrap();
         header.parent
     }
 
     /// Sets the location for the parent node.
     pub(crate) fn set_parent(&mut self, parent: u32) {
         let buffer = self.get_buffer_mut();
-        let mut header: NodeHeader = bincode::deserialize(buffer).unwrap();
+        let mut header: Header = bincode::deserialize(buffer).unwrap();
         header.parent = parent;
         bincode::serialize_into(buffer, &header).unwrap();
     }

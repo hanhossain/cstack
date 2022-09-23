@@ -1,5 +1,6 @@
+use crate::node::common::HEADER_SIZE;
 use crate::node::{
-    Node, COMMON_NODE_HEADER_SIZE, LEAF_NODE_CELL_SIZE, LEAF_NODE_HEADER_SIZE, LEAF_NODE_MAX_CELLS,
+    Node, LEAF_NODE_CELL_SIZE, LEAF_NODE_HEADER_SIZE, LEAF_NODE_MAX_CELLS,
     LEAF_NODE_SPACE_FOR_CELLS,
 };
 use crate::pager::Pager;
@@ -21,7 +22,7 @@ pub fn read_input() -> String {
 
 pub fn print_constants() {
     println!("ROW_SIZE: {}", ROW_SIZE);
-    println!("COMMON_NODE_HEADER_SIZE: {}", COMMON_NODE_HEADER_SIZE);
+    println!("COMMON_NODE_HEADER_SIZE: {}", HEADER_SIZE);
     println!("LEAF_NODE_HEADER_SIZE: {}", LEAF_NODE_HEADER_SIZE);
     println!("LEAF_NODE_CELL_SIZE: {}", LEAF_NODE_CELL_SIZE);
     println!("LEAF_NODE_SPACE_FOR_CELLS: {}", LEAF_NODE_SPACE_FOR_CELLS);

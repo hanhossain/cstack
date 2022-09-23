@@ -1,4 +1,5 @@
-use crate::node::{CommonNode, InternalNode, LeafNode, Node};
+use crate::node::common::CommonNode;
+use crate::node::{InternalNode, LeafNode, Node};
 use crate::storage::{Storage, StorageFactory};
 
 pub const TABLE_MAX_PAGES: usize = 100;
