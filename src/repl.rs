@@ -1,8 +1,8 @@
 use crate::node::common::HEADER_SIZE;
-use crate::node::{
-    Node, LEAF_NODE_CELL_SIZE, LEAF_NODE_HEADER_SIZE, LEAF_NODE_MAX_CELLS,
-    LEAF_NODE_SPACE_FOR_CELLS,
+use crate::node::leaf::{
+    LEAF_NODE_CELL_SIZE, LEAF_NODE_HEADER_SIZE, LEAF_NODE_MAX_CELLS, LEAF_NODE_SPACE_FOR_CELLS,
 };
+use crate::node::Node;
 use crate::pager::Pager;
 use crate::serialization::ROW_SIZE;
 use crate::storage::Storage;

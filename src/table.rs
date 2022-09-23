@@ -1,4 +1,5 @@
-use crate::node::{LeafNode, Node};
+use crate::node::leaf::LeafNode;
+use crate::node::Node;
 use crate::pager::Pager;
 use crate::storage::{Storage, StorageFactory};
 

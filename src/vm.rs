@@ -1,4 +1,4 @@
-use crate::node::leaf_node_insert;
+use crate::node::leaf::leaf_node_insert;
 use crate::repl::{print_constants, print_tree};
 use crate::serialization::{Row, EMAIL_SIZE, USERNAME_SIZE};
 use crate::storage::Storage;

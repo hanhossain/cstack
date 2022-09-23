@@ -1,6 +1,7 @@
 use crate::node::common::CommonNode;
 use crate::node::internal::InternalNode;
-use crate::node::{LeafNode, Node};
+use crate::node::leaf::LeafNode;
+use crate::node::Node;
 use crate::storage::{Storage, StorageFactory};
 
 pub const TABLE_MAX_PAGES: usize = 100;
