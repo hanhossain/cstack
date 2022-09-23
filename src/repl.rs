@@ -1,7 +1,5 @@
-use crate::node::common::HEADER_SIZE;
-use crate::node::leaf::{
-    LEAF_NODE_CELL_SIZE, LEAF_NODE_HEADER_SIZE, LEAF_NODE_MAX_CELLS, LEAF_NODE_SPACE_FOR_CELLS,
-};
+use crate::node::common;
+use crate::node::leaf;
 use crate::node::Node;
 use crate::pager::Pager;
 use crate::serialization::ROW_SIZE;
@@ -22,11 +20,11 @@ pub fn read_input() -> String {
 
 pub fn print_constants() {
     println!("ROW_SIZE: {}", ROW_SIZE);
-    println!("COMMON_NODE_HEADER_SIZE: {}", HEADER_SIZE);
-    println!("LEAF_NODE_HEADER_SIZE: {}", LEAF_NODE_HEADER_SIZE);
-    println!("LEAF_NODE_CELL_SIZE: {}", LEAF_NODE_CELL_SIZE);
-    println!("LEAF_NODE_SPACE_FOR_CELLS: {}", LEAF_NODE_SPACE_FOR_CELLS);
-    println!("LEAF_NODE_MAX_CELLS: {}", LEAF_NODE_MAX_CELLS);
+    println!("COMMON_NODE_HEADER_SIZE: {}", common::HEADER_SIZE);
+    println!("LEAF_NODE_HEADER_SIZE: {}", leaf::HEADER_SIZE);
+    println!("LEAF_NODE_CELL_SIZE: {}", leaf::CELL_SIZE);
+    println!("LEAF_NODE_SPACE_FOR_CELLS: {}", leaf::SPACE_FOR_CELLS);
+    println!("LEAF_NODE_MAX_CELLS: {}", leaf::MAX_CELLS);
 }
 
 pub fn print_tree<T: Storage>(pager: &mut Pager<T>, page_num: u32, indentation_level: u32) {

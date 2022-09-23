@@ -1,4 +1,5 @@
-use crate::node::common::{CommonNode, HEADER_SIZE};
+use crate::node::common;
+use crate::node::common::CommonNode;
 use crate::node::NodeType;
 use crate::pager::PAGE_SIZE;
 use crate::serialization::ROW_SIZE;
@@ -12,22 +13,21 @@ use std::mem::size_of;
 // Leaf Node Header Layout
 //
 // | common header | num cells | next leaf |
-const LEAF_NODE_NUM_CELLS_SIZE: usize = size_of::<u32>();
-const LEAF_NODE_NUM_CELLS_OFFSET: usize = HEADER_SIZE;
-const LEAF_NODE_NEXT_LEAF_SIZE: usize = size_of::<u32>();
-const LEAF_NODE_NEXT_LEAF_OFFSET: usize = LEAF_NODE_NUM_CELLS_OFFSET + LEAF_NODE_NUM_CELLS_SIZE;
-pub(crate) const LEAF_NODE_HEADER_SIZE: usize =
-    HEADER_SIZE + LEAF_NODE_NUM_CELLS_SIZE + LEAF_NODE_NEXT_LEAF_SIZE;
+const NUM_CELLS_SIZE: usize = size_of::<u32>();
+const NUM_CELLS_OFFSET: usize = common::HEADER_SIZE;
+const NEXT_LEAF_SIZE: usize = size_of::<u32>();
+const NEXT_LEAF_OFFSET: usize = NUM_CELLS_OFFSET + NUM_CELLS_SIZE;
+pub(crate) const HEADER_SIZE: usize = common::HEADER_SIZE + NUM_CELLS_SIZE + NEXT_LEAF_SIZE;
 
 // Leaf Node Body Layout
-const LEAF_NODE_KEY_SIZE: usize = size_of::<u32>();
-const LEAF_NODE_VALUE_SIZE: usize = ROW_SIZE;
-pub(crate) const LEAF_NODE_CELL_SIZE: usize = LEAF_NODE_KEY_SIZE + LEAF_NODE_VALUE_SIZE;
-pub(crate) const LEAF_NODE_SPACE_FOR_CELLS: usize = PAGE_SIZE - LEAF_NODE_HEADER_SIZE;
-pub(crate) const LEAF_NODE_MAX_CELLS: usize = LEAF_NODE_SPACE_FOR_CELLS / LEAF_NODE_CELL_SIZE;
+const KEY_SIZE: usize = size_of::<u32>();
+const VALUE_SIZE: usize = ROW_SIZE;
+pub(crate) const CELL_SIZE: usize = KEY_SIZE + VALUE_SIZE;
+pub(crate) const SPACE_FOR_CELLS: usize = PAGE_SIZE - HEADER_SIZE;
+pub(crate) const MAX_CELLS: usize = SPACE_FOR_CELLS / CELL_SIZE;
 
-const LEAF_NODE_RIGHT_SPLIT_COUNT: usize = (LEAF_NODE_MAX_CELLS + 1) / 2;
-const LEAF_NODE_LEFT_SPLIT_COUNT: usize = (LEAF_NODE_MAX_CELLS + 1) - LEAF_NODE_RIGHT_SPLIT_COUNT;
+const RIGHT_SPLIT_COUNT: usize = (MAX_CELLS + 1) / 2;
+const LEFT_SPLIT_COUNT: usize = (MAX_CELLS + 1) - RIGHT_SPLIT_COUNT;
 
 #[derive(Debug)]
 pub struct LeafNode {
@@ -53,13 +53,13 @@ impl LeafNode {
 
     /// Get the number of cells currently occupied in the node.
     pub fn num_cells(&self) -> u32 {
-        unsafe { *(self.node.buffer.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32) }
+        unsafe { *(self.node.buffer.add(NUM_CELLS_OFFSET) as *mut u32) }
     }
 
     /// Set the number of cells currently occupied in the node.
     pub fn set_num_cells(&mut self, num_cells: u32) {
         unsafe {
-            *(self.node.buffer.add(LEAF_NODE_NUM_CELLS_OFFSET) as *mut u32) = num_cells;
+            *(self.node.buffer.add(NUM_CELLS_OFFSET) as *mut u32) = num_cells;
         }
     }
 
@@ -68,7 +68,7 @@ impl LeafNode {
         unsafe {
             self.node
                 .buffer
-                .add(LEAF_NODE_HEADER_SIZE + cell_num as usize * LEAF_NODE_CELL_SIZE)
+                .add(HEADER_SIZE + cell_num as usize * CELL_SIZE)
         }
     }
 
@@ -85,7 +85,7 @@ impl LeafNode {
     /// Get a mutable slice to the leaf node value.
     pub fn value_mut(&mut self, cell_num: u32) -> &mut [u8] {
         unsafe {
-            let ptr = self.cell(cell_num).add(LEAF_NODE_KEY_SIZE);
+            let ptr = self.cell(cell_num).add(KEY_SIZE);
             std::slice::from_raw_parts_mut(ptr, ROW_SIZE)
         }
     }
@@ -93,20 +93,20 @@ impl LeafNode {
     /// Get a slice to the leaf node value
     pub fn value(&self, cell_num: u32) -> &[u8] {
         unsafe {
-            let ptr = self.cell(cell_num).add(LEAF_NODE_KEY_SIZE);
+            let ptr = self.cell(cell_num).add(KEY_SIZE);
             std::slice::from_raw_parts(ptr, ROW_SIZE)
         }
     }
 
     /// Gets the location of the next leaf.
     pub fn next_leaf(&self) -> u32 {
-        unsafe { *(self.node.buffer.add(LEAF_NODE_NEXT_LEAF_OFFSET) as *mut u32) }
+        unsafe { *(self.node.buffer.add(NEXT_LEAF_OFFSET) as *mut u32) }
     }
 
     /// Sets the location of the next leaf.
     pub fn set_next_leaf(&mut self, next_leaf: u32) {
         unsafe {
-            *(self.node.buffer.add(LEAF_NODE_NEXT_LEAF_OFFSET) as *mut u32) = next_leaf;
+            *(self.node.buffer.add(NEXT_LEAF_OFFSET) as *mut u32) = next_leaf;
         }
     }
 
@@ -164,13 +164,13 @@ fn leaf_node_split_and_insert<T: Storage>(cursor: Cursor<T>, key: u32, value: &R
     // All existing keys plus new key should be divided
     // evenly between old (left) and new (right) nodes.
     // Starting from the right, move each key to correct position.
-    for i in (0..=LEAF_NODE_MAX_CELLS as i32).rev() {
-        let destination_node = if i >= LEAF_NODE_LEFT_SPLIT_COUNT as i32 {
+    for i in (0..=MAX_CELLS as i32).rev() {
+        let destination_node = if i >= LEFT_SPLIT_COUNT as i32 {
             &mut new_node
         } else {
             &mut old_node
         };
-        let index_within_node = i % LEAF_NODE_LEFT_SPLIT_COUNT as i32;
+        let index_within_node = i % LEFT_SPLIT_COUNT as i32;
         let destination = destination_node.cell(index_within_node as u32);
 
         unsafe {
@@ -185,21 +185,21 @@ fn leaf_node_split_and_insert<T: Storage>(cursor: Cursor<T>, key: u32, value: &R
                 memcpy(
                     destination as *mut c_void,
                     old_node.cell((i - 1) as u32) as *mut c_void,
-                    LEAF_NODE_CELL_SIZE,
+                    CELL_SIZE,
                 );
             } else {
                 memcpy(
                     destination as *mut c_void,
                     old_node.cell(i as u32) as *mut c_void,
-                    LEAF_NODE_CELL_SIZE,
+                    CELL_SIZE,
                 );
             }
         }
     }
 
     // Update cell count on both leaf nodes
-    old_node.set_num_cells(LEAF_NODE_LEFT_SPLIT_COUNT as u32);
-    new_node.set_num_cells(LEAF_NODE_RIGHT_SPLIT_COUNT as u32);
+    old_node.set_num_cells(LEFT_SPLIT_COUNT as u32);
+    new_node.set_num_cells(RIGHT_SPLIT_COUNT as u32);
 
     unsafe {
         if old_node.node.is_root() {
@@ -219,7 +219,7 @@ fn leaf_node_split_and_insert<T: Storage>(cursor: Cursor<T>, key: u32, value: &R
 
 pub(crate) fn leaf_node_insert<T: Storage>(mut cursor: Cursor<T>, key: u32, value: &Row) {
     let num_cells = cursor.node.num_cells();
-    if num_cells >= LEAF_NODE_MAX_CELLS as u32 {
+    if num_cells >= MAX_CELLS as u32 {
         // Node full
         leaf_node_split_and_insert(cursor, key, value);
         return;
@@ -232,7 +232,7 @@ pub(crate) fn leaf_node_insert<T: Storage>(mut cursor: Cursor<T>, key: u32, valu
                 memcpy(
                     cursor.node.cell(i) as *mut c_void,
                     cursor.node.cell(i - 1) as *mut c_void,
-                    LEAF_NODE_CELL_SIZE,
+                    CELL_SIZE,
                 );
             }
         }

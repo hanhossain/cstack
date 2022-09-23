@@ -1,4 +1,5 @@
-use crate::node::common::{CommonNode, HEADER_SIZE};
+use crate::node::common;
+use crate::node::common::CommonNode;
 use crate::node::{Node, NodeType};
 use crate::storage::Storage;
 use crate::table::Cursor;
@@ -11,21 +12,19 @@ use std::process::exit;
 // Internal Node Header Layout
 //
 // | common header | num keys | right child |
-const INTERNAL_NODE_NUM_KEYS_SIZE: usize = size_of::<u32>();
-const INTERNAL_NODE_NUM_KEYS_OFFSET: usize = HEADER_SIZE;
-const INTERNAL_NODE_RIGHT_CHILD_SIZE: usize = size_of::<u32>();
-const INTERNAL_NODE_RIGHT_CHILD_OFFSET: usize =
-    INTERNAL_NODE_NUM_KEYS_OFFSET + INTERNAL_NODE_NUM_KEYS_SIZE;
-const INTERNAL_NODE_HEADER_SIZE: usize =
-    HEADER_SIZE + INTERNAL_NODE_NUM_KEYS_SIZE + INTERNAL_NODE_RIGHT_CHILD_SIZE;
+const NUM_KEYS_SIZE: usize = size_of::<u32>();
+const NUM_KEYS_OFFSET: usize = common::HEADER_SIZE;
+const RIGHT_CHILD_SIZE: usize = size_of::<u32>();
+const RIGHT_CHILD_OFFSET: usize = NUM_KEYS_OFFSET + NUM_KEYS_SIZE;
+const HEADER_SIZE: usize = common::HEADER_SIZE + NUM_KEYS_SIZE + RIGHT_CHILD_SIZE;
 
 // Internal Node Body Layout
-const INTERNAL_NODE_KEY_SIZE: usize = size_of::<u32>();
-const INTERNAL_NODE_CHILD_SIZE: usize = size_of::<u32>();
-const INTERNAL_NODE_CELL_SIZE: usize = INTERNAL_NODE_CHILD_SIZE + INTERNAL_NODE_KEY_SIZE;
+const KEY_SIZE: usize = size_of::<u32>();
+const CHILD_SIZE: usize = size_of::<u32>();
+const CELL_SIZE: usize = CHILD_SIZE + KEY_SIZE;
 
 // Internal Node Body Layout
-const INTERNAL_NODE_MAX_CELLS: usize = 3;
+const MAX_CELLS: u32 = 3;
 
 #[derive(Debug)]
 pub struct InternalNode {
@@ -50,25 +49,25 @@ impl InternalNode {
 
     /// Gets the number of keys in the node.
     pub fn num_keys(&self) -> u32 {
-        unsafe { *(self.node.buffer.add(INTERNAL_NODE_NUM_KEYS_OFFSET) as *mut u32) }
+        unsafe { *(self.node.buffer.add(NUM_KEYS_OFFSET) as *mut u32) }
     }
 
     /// Sets the number of keys in the node;
     pub fn set_num_keys(&mut self, num_keys: u32) {
         unsafe {
-            *(self.node.buffer.add(INTERNAL_NODE_NUM_KEYS_OFFSET) as *mut u32) = num_keys;
+            *(self.node.buffer.add(NUM_KEYS_OFFSET) as *mut u32) = num_keys;
         }
     }
 
     /// Gets the location of the right child.
     pub fn right_child(&self) -> u32 {
-        unsafe { *(self.node.buffer.add(INTERNAL_NODE_RIGHT_CHILD_OFFSET) as *mut u32) }
+        unsafe { *(self.node.buffer.add(RIGHT_CHILD_OFFSET) as *mut u32) }
     }
 
     /// Sets the location of the right child.
     pub fn set_right_child(&mut self, right_child: u32) {
         unsafe {
-            *(self.node.buffer.add(INTERNAL_NODE_RIGHT_CHILD_OFFSET) as *mut u32) = right_child;
+            *(self.node.buffer.add(RIGHT_CHILD_OFFSET) as *mut u32) = right_child;
         }
     }
 
@@ -78,8 +77,7 @@ impl InternalNode {
             *(self
                 .node
                 .buffer
-                .add(INTERNAL_NODE_HEADER_SIZE + cell_num as usize * INTERNAL_NODE_CELL_SIZE)
-                as *mut u32)
+                .add(HEADER_SIZE + cell_num as usize * CELL_SIZE) as *mut u32)
         }
     }
 
@@ -89,8 +87,7 @@ impl InternalNode {
             *(self
                 .node
                 .buffer
-                .add(INTERNAL_NODE_HEADER_SIZE + cell_num as usize * INTERNAL_NODE_CELL_SIZE)
-                as *mut u32) = cell;
+                .add(HEADER_SIZE + cell_num as usize * CELL_SIZE) as *mut u32) = cell;
         }
     }
 
@@ -126,23 +123,21 @@ impl InternalNode {
 
     pub fn key(&self, key_num: u32) -> u32 {
         unsafe {
-            let internal_node_cell = self
-                .node
-                .buffer
-                .add(INTERNAL_NODE_HEADER_SIZE + key_num as usize * INTERNAL_NODE_CELL_SIZE)
-                as *mut u32;
-            *(internal_node_cell.add(INTERNAL_NODE_CHILD_SIZE))
+            let internal_node_cell =
+                self.node
+                    .buffer
+                    .add(HEADER_SIZE + key_num as usize * CELL_SIZE) as *mut u32;
+            *(internal_node_cell.add(CHILD_SIZE))
         }
     }
 
     pub fn set_key(&mut self, key_num: u32, key: u32) {
         unsafe {
-            let internal_node_cell = self
-                .node
-                .buffer
-                .add(INTERNAL_NODE_HEADER_SIZE + key_num as usize * INTERNAL_NODE_CELL_SIZE)
-                as *mut u32;
-            *(internal_node_cell.add(INTERNAL_NODE_CHILD_SIZE)) = key;
+            let internal_node_cell =
+                self.node
+                    .buffer
+                    .add(HEADER_SIZE + key_num as usize * CELL_SIZE) as *mut u32;
+            *(internal_node_cell.add(CHILD_SIZE)) = key;
         }
     }
 
@@ -197,7 +192,7 @@ impl InternalNode {
         let original_num_keys = self.num_keys();
         self.set_num_keys(original_num_keys + 1);
 
-        if original_num_keys as usize >= INTERNAL_NODE_MAX_CELLS {
+        if original_num_keys >= MAX_CELLS {
             panic!("Need to implement splitting internal node");
         }
 
@@ -214,11 +209,7 @@ impl InternalNode {
                 let destination = self.cell(i);
                 let source = self.cell(i - 1);
                 unsafe {
-                    memcpy(
-                        destination as *mut c_void,
-                        source as *mut c_void,
-                        INTERNAL_NODE_CELL_SIZE,
-                    );
+                    memcpy(destination as *mut c_void, source as *mut c_void, CELL_SIZE);
                 }
             }
             self.set_child(index, child_page_num);
