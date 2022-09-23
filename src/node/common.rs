@@ -8,7 +8,7 @@ pub const HEADER_SIZE: usize = size_of::<Header>();
 
 #[derive(Serialize, Deserialize)]
 pub struct Header {
-    pub r#type: u8,
+    pub r#type: NodeType,
     pub is_root: u8,
     pub parent: u32,
 }
@@ -38,14 +38,14 @@ impl CommonNode {
     pub fn node_type(&self) -> NodeType {
         let buffer = self.get_buffer();
         let header: Header = bincode::deserialize(buffer).unwrap();
-        NodeType::from(header.r#type)
+        header.r#type
     }
 
     /// Sets the node type.
     pub fn set_node_type(&mut self, node_type: NodeType) {
         let buffer = self.get_buffer_mut();
         let mut header: Header = bincode::deserialize(buffer).unwrap();
-        header.r#type = u8::from(node_type);
+        header.r#type = node_type;
         bincode::serialize_into(buffer, &header).unwrap();
     }
 

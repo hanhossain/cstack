@@ -5,30 +5,13 @@ pub mod leaf;
 use crate::node::common::CommonNode;
 use crate::node::internal::InternalNode;
 use crate::node::leaf::LeafNode;
+use serde_repr::{Deserialize_repr, Serialize_repr};
 
-#[derive(Debug)]
+#[derive(Serialize_repr, Deserialize_repr, Debug)]
+#[repr(u8)]
 pub enum NodeType {
-    Internal,
-    Leaf,
-}
-
-impl From<u8> for NodeType {
-    fn from(value: u8) -> Self {
-        match value {
-            0 => NodeType::Internal,
-            1 => NodeType::Leaf,
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl From<NodeType> for u8 {
-    fn from(node_type: NodeType) -> Self {
-        match node_type {
-            NodeType::Internal => 0,
-            NodeType::Leaf => 1,
-        }
-    }
+    Internal = 0,
+    Leaf = 1,
 }
 
 #[derive(Debug)]
