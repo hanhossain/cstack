@@ -7,7 +7,7 @@ use crate::node::internal::InternalNode;
 use crate::node::leaf::LeafNode;
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-#[derive(Serialize_repr, Deserialize_repr, Debug)]
+#[derive(Serialize_repr, Deserialize_repr, Debug, Clone, Copy)]
 #[repr(u8)]
 pub enum NodeType {
     Internal = 0,
