@@ -82,6 +82,7 @@ impl From<NodeType> for u8 {
     }
 }
 
+#[derive(Debug)]
 pub enum Node {
     Internal(InternalNode),
     Leaf(LeafNode),
@@ -164,6 +165,7 @@ impl From<CommonNode> for Node {
     }
 }
 
+#[derive(Debug)]
 pub struct CommonNode {
     pub buffer: *mut u8,
 }
@@ -231,6 +233,7 @@ impl CommonNode {
     }
 }
 
+#[derive(Debug)]
 pub struct InternalNode {
     pub node: CommonNode,
 }
@@ -430,6 +433,7 @@ impl InternalNode {
     }
 }
 
+#[derive(Debug)]
 pub struct LeafNode {
     pub node: CommonNode,
 }
